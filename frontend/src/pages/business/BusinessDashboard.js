@@ -186,10 +186,12 @@ export default function BusinessDashboard() {
       {/* Quick links */}
       <div className="grid grid-cols-2 gap-3">
         {[
-          { to: '/analytics', icon: TrendingUp, label_fr: 'Statistiques', label_en: 'Analytics', color: 'text-primary', bg: 'bg-primary/10' },
-          { to: '/notifications', icon: Bell, label_fr: 'Notifications', label_en: 'Notifications', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/20' },
+          { to: '/calendar', icon: Calendar, label_fr: 'Calendrier', label_en: 'Calendar', color: 'text-primary', bg: 'bg-primary/10' },
+          { to: '/analytics', icon: TrendingUp, label_fr: 'Statistiques', label_en: 'Analytics', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/20' },
+          { to: '/clients', icon: Users, label_fr: 'Mes Clients', label_en: 'My Clients', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-900/20' },
           { to: '/clients-risk', icon: AlertCircle, label_fr: 'Clients à risque', label_en: 'At-risk clients', color: 'text-accent', bg: 'bg-orange-100 dark:bg-orange-900/20' },
-          { to: '/staff', icon: Users, label_fr: 'Équipe', label_en: 'Staff', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-900/20' },
+          { to: '/notifications', icon: Bell, label_fr: 'Notifications', label_en: 'Notifications', color: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/20' },
+          { to: '/staff', icon: Users, label_fr: 'Équipe', label_en: 'Staff', color: 'text-pink-600 dark:text-pink-400', bg: 'bg-pink-100 dark:bg-pink-900/20' },
         ].map((item, i) => (
           <Link key={i} to={item.to} className="bg-card rounded-xl border border-border/50 p-4 flex items-center gap-3 hover:border-primary/30 transition-all card-shadow" data-testid={`quick-link-${i}`}>
             <div className={`w-8 h-8 ${item.bg} rounded-xl flex items-center justify-center flex-shrink-0`}>
