@@ -36,6 +36,7 @@ import AdminStats from './pages/admin/AdminStats';
 import AdminMessaging from './pages/admin/AdminMessaging';
 import StaffDashboard from './pages/staff/StaffDashboard';
 import ConfirmPage from './pages/public/ConfirmPage';
+import PublicWheelPage from './pages/PublicWheelPage';
 import './App.css';
 
 const ProtectedRoute = ({ children, roles }) => {
