@@ -110,6 +110,14 @@ export default function AppointmentsPage() {
     { value: 'completed', label_fr: 'Terminés', label_en: 'Completed' },
   ];
 
+  const sourceOptions = [
+    { value: 'all', label_fr: 'Toutes sources', label_en: 'All sources' },
+    { value: 'manual', label_fr: 'Manuel', label_en: 'Manual' },
+    { value: 'google_calendar', label_fr: 'Google Cal', label_en: 'Google Cal' },
+    { value: 'api_thefork', label_fr: 'TheFork', label_en: 'TheFork' },
+    { value: 'api_opentable', label_fr: 'OpenTable', label_en: 'OpenTable' },
+  ];
+
   return (
     <BusinessLayout>
       {/* Header */}
