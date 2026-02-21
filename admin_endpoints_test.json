@@ -1,0 +1,22 @@
+[
+  {
+    "endpoint": "admin/plans",
+    "status": "PASS"
+  },
+  {
+    "endpoint": "admin/users",
+    "status": "PASS"
+  },
+  {
+    "endpoint": "admin/activity",
+    "status": "PASS"
+  },
+  {
+    "endpoint": "admin/stats",
+    "status": "PASS"
+  },
+  {
+    "endpoint": "clients/risk-scores",
+    "status": "PASS"
+  }
+]
