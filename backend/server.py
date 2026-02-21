@@ -633,11 +633,27 @@ async def update_appointment(appointment_id: str, data: AppointmentUpdate, user=
     if user["role"] != UserRole.SUPER_ADMIN:
         query["business_id"] = business_id
     
+    # Récupérer l'ancien statut pour détecter le changement
+    old_appt = await db.appointments.find_one(query, {"_id": 0, "status": 1})
+    old_status = old_appt.get("status") if old_appt else None
+    
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
     if update_data:
         await db.appointments.update_one(query, {"$set": update_data})
     
     appt = await db.appointments.find_one(query, {"_id": 0})
+    
+    # 🚀 TRIGGER AUTOMATIQUE: Si le statut passe à "completed", déclencher post-RDV
+    new_status = update_data.get("status") or (appt.get("status") if appt else None)
+    if old_status != "completed" and new_status == "completed" and appt:
+        try:
+            from services.post_rdv_automation_service import PostRdvAutomationService
+            automation_service = PostRdvAutomationService(db)
+            asyncio.create_task(automation_service.trigger_post_rdv(appointment_id, appt["business_id"]))
+            logger.info(f"🚀 Post-RDV automation triggered for appointment {appointment_id}")
+        except Exception as e:
+            logger.error(f"❌ Error triggering post-RDV automation: {e}")
+    
     return appt
 
 @api_router.delete("/appointments/{appointment_id}")
