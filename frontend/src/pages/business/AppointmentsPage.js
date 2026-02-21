@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Calendar, Phone, CheckCircle, X, Clock, RefreshCw, Trash2 } from 'lucide-react';
+import { Plus, Search, Filter, Calendar, Phone, CheckCircle, X, Clock, RefreshCw, Trash2, ExternalLink, Smartphone, Globe } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
@@ -20,6 +20,16 @@ const STATUS_CONFIG = {
   rescheduled: { label_fr: 'Reporté', label_en: 'Rescheduled', className: 'status-rescheduled' },
 };
 
+const SOURCE_CONFIG = {
+  manual: { label_fr: 'Manuel', label_en: 'Manual', icon: Smartphone, color: 'text-blue-500' },
+  google_calendar: { label_fr: 'Google Cal', label_en: 'Google Cal', icon: Calendar, color: 'text-green-500' },
+  outlook: { label_fr: 'Outlook', label_en: 'Outlook', icon: Calendar, color: 'text-blue-600' },
+  ical: { label_fr: 'iCal', label_en: 'iCal', icon: Calendar, color: 'text-gray-500' },
+  api_thefork: { label_fr: 'TheFork', label_en: 'TheFork', icon: ExternalLink, color: 'text-green-600' },
+  api_opentable: { label_fr: 'OpenTable', label_en: 'OpenTable', icon: ExternalLink, color: 'text-red-500' },
+  api_external: { label_fr: 'API', label_en: 'API', icon: Globe, color: 'text-purple-500' },
+};
+
 export default function AppointmentsPage() {
   const { lang } = useLang();
   const [appointments, setAppointments] = useState([]);
@@ -28,6 +38,7 @@ export default function AppointmentsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [sourceFilter, setSourceFilter] = useState('all');
   const [selectedAppt, setSelectedAppt] = useState(null);
 
   useEffect(() => { fetchAppointments(); }, []);
@@ -35,6 +46,7 @@ export default function AppointmentsPage() {
   useEffect(() => {
     let result = appointments;
     if (statusFilter !== 'all') result = result.filter(a => a.status === statusFilter);
+    if (sourceFilter !== 'all') result = result.filter(a => (a.source || 'manual') === sourceFilter);
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(a =>
@@ -44,7 +56,7 @@ export default function AppointmentsPage() {
       );
     }
     setFiltered(result);
-  }, [appointments, statusFilter, search]);
+  }, [appointments, statusFilter, sourceFilter, search]);
 
   const fetchAppointments = async () => {
     try {
