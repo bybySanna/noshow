@@ -3032,7 +3032,7 @@ async def get_credit_packs():
 
 @api_router.post("/credits/purchase")
 async def purchase_credits(data: dict, user=Depends(get_current_user)):
-    """Achat de crédits prépayés"""
+    """Achat de crédits prépayés (mode simulation)"""
     business_id = user.get("business_id")
     if not business_id:
         raise HTTPException(status_code=400, detail="No business")
@@ -3050,6 +3050,208 @@ async def purchase_credits(data: dict, user=Depends(get_current_user)):
         raise HTTPException(status_code=400, detail=result["error"])
     
     return result
+
+# ============= STRIPE CHECKOUT POUR CRÉDITS =============
+@api_router.post("/credits/checkout")
+async def create_credits_checkout(data: dict, user=Depends(get_current_user)):
+    """Crée une session Stripe Checkout pour acheter des crédits"""
+    from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
+    
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    credit_type = data.get("credit_type")
+    pack_key = data.get("pack_key")
+    origin_url = data.get("origin_url", "")
+    
+    if not credit_type or not pack_key:
+        raise HTTPException(status_code=400, detail="credit_type and pack_key required")
+    
+    # Récupérer le prix du pack (sécurité: prix défini côté serveur)
+    service = CreditsService(db)
+    packs = await service.get_credit_packs()
+    
+    pack_info = packs.get(credit_type, {}).get("packs", {}).get(pack_key)
+    if not pack_info:
+        raise HTTPException(status_code=400, detail="Pack non trouvé")
+    
+    amount_cents = pack_info["price_cents"]
+    quantity = pack_info["quantity"]
+    
+    # Initialiser Stripe
+    stripe_key = os.environ.get("STRIPE_API_KEY", "")
+    if not stripe_key:
+        raise HTTPException(status_code=500, detail="Stripe non configuré")
+    
+    webhook_url = f"{origin_url}/api/webhook/stripe"
+    stripe_checkout = StripeCheckout(api_key=stripe_key, webhook_url=webhook_url)
+    
+    # URLs dynamiques
+    success_url = f"{origin_url}/credits?session_id={{CHECKOUT_SESSION_ID}}&success=true"
+    cancel_url = f"{origin_url}/credits?cancelled=true"
+    
+    # Créer la session checkout
+    checkout_request = CheckoutSessionRequest(
+        amount=float(amount_cents) / 100,  # Convertir en euros
+        currency="eur",
+        success_url=success_url,
+        cancel_url=cancel_url,
+        metadata={
+            "business_id": business_id,
+            "credit_type": credit_type,
+            "pack_key": pack_key,
+            "quantity": str(quantity),
+            "type": "credit_purchase"
+        }
+    )
+    
+    session = await stripe_checkout.create_checkout_session(checkout_request)
+    
+    # Enregistrer la transaction dans la DB
+    transaction = {
+        "id": str(uuid.uuid4()),
+        "session_id": session.session_id,
+        "business_id": business_id,
+        "credit_type": credit_type,
+        "pack_key": pack_key,
+        "quantity": quantity,
+        "amount_cents": amount_cents,
+        "currency": "eur",
+        "status": "initiated",
+        "payment_status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.payment_transactions.insert_one(transaction)
+    
+    return {
+        "checkout_url": session.url,
+        "session_id": session.session_id
+    }
+
+@api_router.get("/credits/checkout/status/{session_id}")
+async def get_checkout_status(session_id: str, user=Depends(get_current_user)):
+    """Vérifie le statut du paiement et ajoute les crédits si payé"""
+    from emergentintegrations.payments.stripe.checkout import StripeCheckout
+    
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    # Vérifier que la transaction appartient à ce business
+    transaction = await db.payment_transactions.find_one(
+        {"session_id": session_id, "business_id": business_id},
+        {"_id": 0}
+    )
+    
+    if not transaction:
+        raise HTTPException(status_code=404, detail="Transaction non trouvée")
+    
+    # Si déjà traité, retourner le statut
+    if transaction.get("payment_status") == "paid":
+        return {
+            "status": "complete",
+            "payment_status": "paid",
+            "credits_added": transaction.get("quantity", 0),
+            "already_processed": True
+        }
+    
+    # Vérifier avec Stripe
+    stripe_key = os.environ.get("STRIPE_API_KEY", "")
+    stripe_checkout = StripeCheckout(api_key=stripe_key, webhook_url="")
+    
+    status = await stripe_checkout.get_checkout_status(session_id)
+    
+    # Mettre à jour la transaction
+    await db.payment_transactions.update_one(
+        {"session_id": session_id},
+        {"$set": {
+            "status": status.status,
+            "payment_status": status.payment_status,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Si payé et pas encore traité, ajouter les crédits
+    if status.payment_status == "paid" and transaction.get("payment_status") != "paid":
+        service = CreditsService(db)
+        await service.purchase_credits_prepaid(
+            business_id,
+            transaction["credit_type"],
+            transaction["pack_key"]
+        )
+        
+        # Marquer comme traité
+        await db.payment_transactions.update_one(
+            {"session_id": session_id},
+            {"$set": {"credits_added": True}}
+        )
+        
+        return {
+            "status": status.status,
+            "payment_status": status.payment_status,
+            "credits_added": transaction.get("quantity", 0),
+            "message": "Crédits ajoutés avec succès!"
+        }
+    
+    return {
+        "status": status.status,
+        "payment_status": status.payment_status,
+        "amount_total": status.amount_total,
+        "currency": status.currency
+    }
+
+@api_router.post("/webhook/stripe")
+async def handle_stripe_webhook(request: Request):
+    """Webhook Stripe pour les paiements"""
+    from emergentintegrations.payments.stripe.checkout import StripeCheckout
+    
+    try:
+        body = await request.body()
+        signature = request.headers.get("Stripe-Signature", "")
+        
+        stripe_key = os.environ.get("STRIPE_API_KEY", "")
+        stripe_checkout = StripeCheckout(api_key=stripe_key, webhook_url="")
+        
+        webhook_response = await stripe_checkout.handle_webhook(body, signature)
+        
+        # Si paiement réussi, traiter
+        if webhook_response.payment_status == "paid":
+            session_id = webhook_response.session_id
+            metadata = webhook_response.metadata
+            
+            # Vérifier si pas déjà traité
+            transaction = await db.payment_transactions.find_one(
+                {"session_id": session_id},
+                {"_id": 0}
+            )
+            
+            if transaction and transaction.get("payment_status") != "paid":
+                # Ajouter les crédits
+                service = CreditsService(db)
+                await service.purchase_credits_prepaid(
+                    transaction["business_id"],
+                    transaction["credit_type"],
+                    transaction["pack_key"]
+                )
+                
+                # Mettre à jour la transaction
+                await db.payment_transactions.update_one(
+                    {"session_id": session_id},
+                    {"$set": {
+                        "payment_status": "paid",
+                        "credits_added": True,
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                
+                logger.info(f"💳 Crédits ajoutés via webhook: {transaction['quantity']} {transaction['credit_type']}")
+        
+        return {"success": True}
+        
+    except Exception as e:
+        logger.error(f"Erreur webhook Stripe: {str(e)}")
+        return {"error": str(e)}
 
 @api_router.put("/credits/pay-as-you-go")
 async def configure_pay_as_you_go(data: dict, user=Depends(get_current_user)):
