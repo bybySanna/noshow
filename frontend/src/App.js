@@ -26,6 +26,7 @@ import BusinessMessagesPage from './pages/business/BusinessMessagesPage';
 import AutomationPage from './pages/business/AutomationPage';
 import BusinessOnboardingPage from './pages/business/OnboardingPage';
 import CreditsPage from './pages/business/CreditsPage';
+import WheelOfFortunePage from './pages/business/WheelOfFortunePage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminBusinesses from './pages/admin/AdminBusinesses';
 import AdminPlans from './pages/admin/AdminPlans';
