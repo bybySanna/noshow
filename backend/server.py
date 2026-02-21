@@ -1318,39 +1318,6 @@ async def get_public_stats():
         "no_show_reduction": 85  # Valeur marketing
     }
 
-# ============= CALENDAR VIEW =============
-@api_router.get("/appointments/calendar")
-async def get_calendar_appointments(user=Depends(get_current_user), start_date: str = None, end_date: str = None):
-    """RDV formatés pour vue calendrier"""
-    business_id = user.get("business_id")
-    if not business_id:
-        raise HTTPException(status_code=400, detail="No business")
-    
-    if not start_date:
-        start_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    if not end_date:
-        end_date = (datetime.now(timezone.utc) + timedelta(days=30)).strftime("%Y-%m-%d")
-    
-    appts = await db.appointments.find(
-        {"business_id": business_id, "date": {"$gte": start_date, "$lte": end_date}},
-        {"_id": 0}
-    ).sort([("date", 1), ("time", 1)]).to_list(500)
-    
-    # Grouper par date
-    by_date = {}
-    for appt in appts:
-        date = appt["date"]
-        if date not in by_date:
-            by_date[date] = []
-        by_date[date].append(appt)
-    
-    return {
-        "appointments": appts,
-        "by_date": by_date,
-        "start_date": start_date,
-        "end_date": end_date
-    }
-
 # ============= CLIENT MANAGEMENT =============
 @api_router.get("/clients")
 async def get_clients(user=Depends(get_current_user)):
