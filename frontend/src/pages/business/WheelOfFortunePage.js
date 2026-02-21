@@ -489,30 +489,6 @@ export default function WheelOfFortunePage() {
                 </div>
               </div>
 
-              {/* Tasks required */}
-              <div className="bg-card rounded-xl p-5 border border-border">
-                <h3 className="font-heading font-700 mb-4">
-                  {lang === 'fr' ? 'Tâche requise pour jouer' : 'Task required to play'}
-                </h3>
-                <div className="grid sm:grid-cols-2 gap-3">
-                  {tasks.map((task) => (
-                    <button
-                      key={task.key}
-                      onClick={() => setConfig({ ...config, tasks_required: [task.key] })}
-                      className={`p-3 rounded-xl border text-left transition-all ${
-                        config.tasks_required?.includes(task.key)
-                          ? 'border-primary bg-primary/5'
-                          : 'border-border hover:border-primary/30'
-                      }`}
-                    >
-                      <span className="text-sm font-heading font-600">
-                        {lang === 'fr' ? task.label_fr : task.label_en}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Settings */}
               <div className="bg-card rounded-xl p-5 border border-border">
                 <h3 className="font-heading font-700 mb-4">
@@ -536,7 +512,7 @@ export default function WheelOfFortunePage() {
                   <div>
                     <label className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
                       <Users className="w-4 h-4" />
-                      {lang === 'fr' ? 'Tours max par client' : 'Max spins per client'}
+                      {lang === 'fr' ? 'Participations max par client' : 'Max plays per client'}
                     </label>
                     <input
                       type="number"
@@ -548,6 +524,443 @@ export default function WheelOfFortunePage() {
                     />
                   </div>
                 </div>
+              </div>
+
+              {/* Preview wheel */}
+              <div className="bg-card rounded-xl p-5 border border-border">
+                <h3 className="font-heading font-700 mb-4 text-center">
+                  {lang === 'fr' ? 'Aperçu' : 'Preview'}
+                </h3>
+                <WheelPreview segments={config.segments} spinning={spinning} />
+                <div className="mt-4 text-center">
+                  <Button onClick={testSpin} disabled={spinning} className="rounded-xl" data-testid="test-spin">
+                    <Play className="w-4 h-4 mr-2" />
+                    {lang === 'fr' ? 'Tester' : 'Test'}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Save */}
+              <div className="flex justify-end">
+                <Button onClick={saveConfig} disabled={saving} className="rounded-xl" data-testid="save-config">
+                  <Save className="w-4 h-4 mr-2" />
+                  {saving ? '...' : (lang === 'fr' ? 'Sauvegarder' : 'Save')}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* ACTIONS TAB */}
+          {activeTab === 'actions' && (
+            <div className="space-y-6">
+              <div className="bg-card rounded-xl p-5 border border-border">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="font-heading font-700">
+                      {lang === 'fr' ? 'Actions à accomplir' : 'Actions to complete'}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {lang === 'fr' 
+                        ? 'Définissez les actions que vos clients doivent accomplir avant de jouer'
+                        : 'Define actions your customers must complete before playing'}
+                    </p>
+                  </div>
+                  <Button onClick={addAction} size="sm" className="rounded-xl">
+                    <Plus className="w-4 h-4 mr-1" />
+                    {lang === 'fr' ? 'Ajouter' : 'Add'}
+                  </Button>
+                </div>
+                
+                <div className="space-y-4">
+                  {(config.actions || []).map((action, index) => (
+                    <div key={index} className="p-4 bg-muted/50 rounded-xl border border-border">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="font-heading font-600">Action {index + 1}</span>
+                        <button onClick={() => deleteAction(index)} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="grid md:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs text-muted-foreground mb-1 block">
+                            {lang === 'fr' ? 'Libellé' : 'Label'}
+                          </label>
+                          <input
+                            type="text"
+                            value={action.label || ''}
+                            onChange={(e) => updateAction(index, { ...action, label: e.target.value })}
+                            placeholder={lang === 'fr' ? 'Ex: Laisser un avis Google' : 'Ex: Leave a Google review'}
+                            className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground mb-1 block">
+                            {lang === 'fr' ? 'Lien (optionnel)' : 'Link (optional)'}
+                          </label>
+                          <input
+                            type="url"
+                            value={action.link || ''}
+                            onChange={(e) => updateAction(index, { ...action, link: e.target.value })}
+                            placeholder="https://..."
+                            className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 mt-3">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={action.required || false}
+                            onChange={(e) => updateAction(index, { ...action, required: e.target.checked })}
+                            className="w-4 h-4 rounded"
+                          />
+                          <span className="text-sm">{lang === 'fr' ? 'Obligatoire' : 'Required'}</span>
+                        </label>
+                        <div className="flex gap-2 ml-auto">
+                          {actionIcons.map((iconDef) => (
+                            <button
+                              key={iconDef.key}
+                              onClick={() => updateAction(index, { ...action, icon: iconDef.key })}
+                              className={`p-2 rounded-lg transition-colors ${action.icon === iconDef.key ? 'bg-primary text-white' : 'bg-muted hover:bg-muted/80'}`}
+                              title={iconDef.label}
+                            >
+                              <iconDef.Icon className="w-4 h-4" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {(config.actions || []).length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Gift className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                      <p>{lang === 'fr' ? 'Aucune action définie' : 'No actions defined'}</p>
+                      <p className="text-sm">{lang === 'fr' ? 'Les clients pourront jouer directement' : 'Customers can play directly'}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Social links */}
+              <div className="bg-card rounded-xl p-5 border border-border">
+                <h3 className="font-heading font-700 mb-4">
+                  {lang === 'fr' ? 'Liens réseaux sociaux' : 'Social media links'}
+                </h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {[
+                    { key: 'facebook', icon: Facebook, label: 'Facebook' },
+                    { key: 'instagram', icon: Instagram, label: 'Instagram' },
+                    { key: 'tiktok', icon: Play, label: 'TikTok' },
+                    { key: 'whatsapp', icon: MessageCircle, label: 'WhatsApp' },
+                  ].map((social) => (
+                    <div key={social.key}>
+                      <label className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
+                        <social.icon className="w-4 h-4" />
+                        {social.label}
+                      </label>
+                      <input
+                        type="text"
+                        value={config.social_links?.[social.key] || ''}
+                        onChange={(e) => setConfig({
+                          ...config,
+                          social_links: { ...(config.social_links || {}), [social.key]: e.target.value }
+                        })}
+                        placeholder={social.key === 'whatsapp' ? '+33612345678' : `https://${social.key}.com/...`}
+                        className="w-full px-3 py-2 rounded-lg bg-muted/50 border border-border text-sm"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Google Review Link */}
+              <div className="bg-card rounded-xl p-5 border border-border">
+                <h3 className="font-heading font-700 mb-4 flex items-center gap-2">
+                  <Star className="w-5 h-5 text-yellow-500" />
+                  {lang === 'fr' ? 'Lien Avis Google' : 'Google Review Link'}
+                </h3>
+                <input
+                  type="url"
+                  value={config.google_review_link || ''}
+                  onChange={(e) => setConfig({ ...config, google_review_link: e.target.value })}
+                  placeholder="https://g.page/r/..."
+                  className="w-full px-3 py-2 rounded-lg bg-muted/50 border border-border"
+                />
+                <p className="text-xs text-muted-foreground mt-2">
+                  {lang === 'fr' 
+                    ? 'Ce lien sera utilisé pour l\'action "Laisser un avis Google"'
+                    : 'This link will be used for the "Leave a Google review" action'}
+                </p>
+              </div>
+
+              <div className="flex justify-end">
+                <Button onClick={saveConfig} disabled={saving} className="rounded-xl">
+                  <Save className="w-4 h-4 mr-2" />
+                  {saving ? '...' : (lang === 'fr' ? 'Sauvegarder' : 'Save')}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* LINK & QR TAB */}
+          {activeTab === 'link' && (
+            <div className="space-y-6">
+              <div className="bg-card rounded-xl p-5 border border-border">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="font-heading font-700 flex items-center gap-2">
+                      <Gift className="w-5 h-5 text-primary" />
+                      {lang === 'fr' ? 'Activer la Roue' : 'Enable Wheel'}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {config.enabled 
+                        ? (lang === 'fr' ? 'Votre roue est accessible aux clients' : 'Your wheel is accessible to customers')
+                        : (lang === 'fr' ? 'Activez pour rendre la roue accessible' : 'Enable to make the wheel accessible')}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => { setConfig({ ...config, enabled: !config.enabled }); }}
+                    className={`w-12 h-6 rounded-full transition-colors ${config.enabled ? 'bg-primary' : 'bg-muted'}`}
+                    data-testid="toggle-wheel"
+                  >
+                    <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${config.enabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                  </button>
+                </div>
+              </div>
+
+              {/* URL unique */}
+              <div className="bg-card rounded-xl p-5 border border-border">
+                <h3 className="font-heading font-700 mb-4 flex items-center gap-2">
+                  <Link className="w-5 h-5 text-primary" />
+                  {lang === 'fr' ? 'Lien unique de votre roue' : 'Your unique wheel link'}
+                </h3>
+                <div className="p-3 bg-muted/50 rounded-xl flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={wheelUrl || `${window.location.origin}/play/${uniqueCode || '...'}`}
+                    readOnly
+                    className="flex-1 bg-transparent text-sm font-mono truncate"
+                  />
+                  <button onClick={copyUrl} className="p-2 rounded-lg hover:bg-muted transition-colors">
+                    {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                  </button>
+                  <a href={wheelUrl} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg hover:bg-muted transition-colors">
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  {lang === 'fr' 
+                    ? 'Partagez ce lien avec vos clients ou dans vos messages automatiques'
+                    : 'Share this link with your customers or in your automated messages'}
+                </p>
+              </div>
+
+              {/* QR Code */}
+              <div className="bg-card rounded-xl p-5 border border-border">
+                <h3 className="font-heading font-700 mb-4 flex items-center gap-2">
+                  <QrCode className="w-5 h-5 text-primary" />
+                  {lang === 'fr' ? 'QR Code' : 'QR Code'}
+                </h3>
+                <div className="flex flex-col items-center">
+                  <div className="bg-white p-4 rounded-xl">
+                    {wheelUrl && <QRCode value={wheelUrl} size={200} />}
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-4 text-center">
+                    {lang === 'fr' 
+                      ? 'Imprimez ce QR code et affichez-le dans votre établissement'
+                      : 'Print this QR code and display it in your establishment'}
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    className="mt-4 rounded-xl"
+                    onClick={() => {
+                      const svg = document.querySelector('.bg-white svg');
+                      if (svg) {
+                        const svgData = new XMLSerializer().serializeToString(svg);
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        const img = new Image();
+                        img.onload = () => {
+                          canvas.width = img.width;
+                          canvas.height = img.height;
+                          ctx.fillStyle = 'white';
+                          ctx.fillRect(0, 0, canvas.width, canvas.height);
+                          ctx.drawImage(img, 0, 0);
+                          const a = document.createElement('a');
+                          a.download = 'qr-code-roue.png';
+                          a.href = canvas.toDataURL('image/png');
+                          a.click();
+                        };
+                        img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+                      }
+                    }}
+                  >
+                    {lang === 'fr' ? 'Télécharger le QR Code' : 'Download QR Code'}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button onClick={saveConfig} disabled={saving} className="rounded-xl">
+                  <Save className="w-4 h-4 mr-2" />
+                  {saving ? '...' : (lang === 'fr' ? 'Sauvegarder' : 'Save')}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* LEGAL TAB */}
+          {activeTab === 'legal' && (
+            <div className="space-y-6">
+              {/* CGV */}
+              <div className="bg-card rounded-xl p-5 border border-border">
+                <h3 className="font-heading font-700 mb-4">
+                  {lang === 'fr' ? 'Conditions Générales' : 'Terms & Conditions'}
+                </h3>
+                <textarea
+                  value={config.cgv_text || ''}
+                  onChange={(e) => setConfig({ ...config, cgv_text: e.target.value })}
+                  placeholder={lang === 'fr' 
+                    ? 'En participant à ce jeu, vous acceptez nos conditions générales...'
+                    : 'By participating in this game, you accept our terms and conditions...'}
+                  rows={6}
+                  className="w-full px-3 py-2 rounded-lg bg-muted/50 border border-border resize-none"
+                />
+              </div>
+
+              {/* Règles du jeu */}
+              <div className="bg-card rounded-xl p-5 border border-border">
+                <h3 className="font-heading font-700 mb-4">
+                  {lang === 'fr' ? 'Règles du Jeu' : 'Game Rules'}
+                </h3>
+                <textarea
+                  value={config.rules_text || ''}
+                  onChange={(e) => setConfig({ ...config, rules_text: e.target.value })}
+                  placeholder={lang === 'fr' 
+                    ? '1. Une seule participation par personne et par jour\n2. Le lot doit être récupéré sur présentation du code\n3. Validité de 30 jours...'
+                    : '1. One entry per person per day\n2. Prize must be collected with the code\n3. Valid for 30 days...'}
+                  rows={6}
+                  className="w-full px-3 py-2 rounded-lg bg-muted/50 border border-border resize-none"
+                />
+              </div>
+
+              {/* RGPD */}
+              <div className="bg-card rounded-xl p-5 border border-border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-heading font-700">
+                      {lang === 'fr' ? 'Case RGPD obligatoire' : 'Required GDPR checkbox'}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {lang === 'fr' 
+                        ? 'Les clients doivent accepter les CGV et la politique RGPD pour jouer'
+                        : 'Customers must accept terms and GDPR policy to play'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setConfig({ ...config, require_gdpr: !config.require_gdpr })}
+                    className={`w-12 h-6 rounded-full transition-colors ${config.require_gdpr ? 'bg-primary' : 'bg-muted'}`}
+                  >
+                    <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${config.require_gdpr ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button onClick={saveConfig} disabled={saving} className="rounded-xl">
+                  <Save className="w-4 h-4 mr-2" />
+                  {saving ? '...' : (lang === 'fr' ? 'Sauvegarder' : 'Save')}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* VALIDATIONS TAB */}
+          {activeTab === 'validations' && (
+            <div className="space-y-6">
+              <div className="bg-card rounded-xl p-5 border border-border">
+                <h3 className="font-heading font-700 mb-4">
+                  {lang === 'fr' ? 'Gains à valider' : 'Prizes to validate'}
+                </h3>
+                
+                {/* Filtres */}
+                <div className="flex gap-2 mb-4">
+                  {['pending', 'validated', 'expired'].map((status) => (
+                    <Button
+                      key={status}
+                      variant={redemptionFilter === status ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setRedemptionFilter(status)}
+                      className="rounded-full"
+                    >
+                      {status === 'pending' && (lang === 'fr' ? 'En attente' : 'Pending')}
+                      {status === 'validated' && (lang === 'fr' ? 'Validés' : 'Validated')}
+                      {status === 'expired' && (lang === 'fr' ? 'Expirés' : 'Expired')}
+                    </Button>
+                  ))}
+                </div>
+
+                {/* Liste */}
+                <div className="space-y-3">
+                  {redemptions.map((redemption) => (
+                    <div key={redemption.id} className="p-4 bg-muted/50 rounded-xl border border-border">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-heading font-600">{redemption.client_name || 'Client'}</p>
+                          <p className="text-sm text-muted-foreground">{redemption.client_phone} • {redemption.client_email}</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className="px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                              {redemption.prize_label}
+                            </span>
+                            <span className="text-xs text-muted-foreground font-mono">
+                              {redemption.validation_code}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {new Date(redemption.created_at).toLocaleDateString('fr-FR', { 
+                              day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                            })}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {redemption.status === 'pending' && (
+                            <Button
+                              size="sm"
+                              onClick={() => validateRedemption(redemption.validation_code)}
+                              className="rounded-xl"
+                            >
+                              <CheckCircle className="w-4 h-4 mr-1" />
+                              {lang === 'fr' ? 'Valider' : 'Validate'}
+                            </Button>
+                          )}
+                          {redemption.status === 'validated' && (
+                            <span className="px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 text-xs font-medium flex items-center gap-1">
+                              <CheckCircle className="w-3 h-3" />
+                              {lang === 'fr' ? 'Validé' : 'Validated'}
+                            </span>
+                          )}
+                          {redemption.status === 'expired' && (
+                            <span className="px-3 py-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 text-xs font-medium flex items-center gap-1">
+                              <XCircle className="w-3 h-3" />
+                              {lang === 'fr' ? 'Expiré' : 'Expired'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {redemptions.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Gift className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                      <p>{lang === 'fr' ? 'Aucun gain' : 'No prizes'} {redemptionFilter === 'pending' ? (lang === 'fr' ? 'en attente' : 'pending') : ''}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
               </div>
 
               {/* Save button */}
