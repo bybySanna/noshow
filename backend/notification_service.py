@@ -171,7 +171,7 @@ async def send_appointment_notification(
     template_key: str,
     channels: List[str],
     extra_vars: Dict = None,
-    base_url: str = "https://appointment-armor.preview.emergentagent.com"
+    base_url: str = "https://appointment-app-demo.preview.emergentagent.com"
 ):
     """Main function to send appointment notifications through configured channels."""
     client_phone = appointment.get("client_phone", "")

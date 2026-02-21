@@ -2,80 +2,85 @@
 The user wants to build a mobile-first SaaS web application named NoShowGone. The platform is designed to help businesses like restaurants, salons, and coaches reduce appointment no-shows.
 
 **PRODUCT REQUIREMENTS:**
--   **User Roles:**
-    1.  **Super Admin:** Manages the entire SaaS platform, subscription plans, and global analytics.
-    2.  **Business (Client):** Manages their own appointments, staff, and reminder settings.
-    3.  **Staff:** Limited role for employees to manage appointments.
-    4.  **End Client:** Interacts via a unique link to confirm, cancel, or reschedule appointments without needing an account.
+-   **User Roles:** Super Admin, Business (Client), Staff, End Client.
 -   **Core Features:**
-    -   **Dashboards:** Role-specific dashboards with analytics and quick actions.
-    -   **Appointment Management:** Rapid creation and management of appointments.
-    -   **Automated Reminders:** Simulated system for Email, WhatsApp, and SMS reminders.
-    -   **Client Confirmation Flow:** A public-facing page for end-clients to manage their appointment.
-    -   **Optional Deposits:** Simulated Stripe integration for taking anti-no-show deposits.
-    -   **ML Scoring:** A system to predict the risk of a no-show for each appointment.
-    -   **Calendar Integration:** Import appointments from Google Calendar (simulated), with plans for Outlook/iCal.
-    -   **Customizable Templates:** Businesses can edit the content of reminder messages.
--   **Tech Stack:** React (Frontend), FastAPI (Backend), MongoDB (Database).
+    -   Role-specific dashboards with analytics.
+    -   Appointment Management.
+    -   Automated Reminders (Email, WhatsApp, SMS).
+    -   Client-facing page for appointment management.
+    -   Optional Deposits (Stripe integration).
+    -   ML-based no-show risk scoring.
+    -   Calendar Integration (Google, Outlook, iCal).
+    -   Customizable message templates.
+-   **Recent High-Priority Requests:**
+    1.  **Monetization & Limits:** Implement a system of credits for sending emails and SMS, with limits defined in subscription plans. Add a pay-as-you-go model for purchasing extra credits via Stripe.
+    2.  **Automated Emailing:** Integrate Resend to allow businesses to send emails that appear to come from their own domain.
+    3.  **Gamification:** Create a configurable Wheel of Fortune feature to reward clients for completing tasks (e.g., leaving a Google review, following on social media).
+    4.  **100% Automated Marketing:** A fully automated workflow that triggers after an appointment is completed to send customizable thank-you/loyalty messages.
+    5.  **2000% Pertinent Tools:** A recurring request to add high-value, insightful widgets to the dashboards.
 
 **User's preferred language**: French. The next agent MUST respond in French.
 
 **what currently exists?**
-A feature-rich full-stack application. The backend (FastAPI) and frontend (React) have been significantly built out over multiple sessions.
-- **Backend:** Features include JWT authentication, role-based access control, CRUD APIs for appointments, businesses, and users. It now also includes simulated services for notifications (), payments (), ML-based risk scoring (), and Google Calendar integration (). A full CRUD API for managing subscription plans is also implemented.
-- **Frontend:** Includes a landing page, authentication flow, and highly detailed, role-specific dashboards for Super Admins, Businesses, and Staff. Recent additions include pages for a weekly calendar view, managing message templates, viewing ML risk scores, and managing third-party integrations.
-- **State:** The application is stable and has successfully passed multiple comprehensive test runs by the testing agent. All user-requested features from previous sessions have been implemented.
+A feature-rich full-stack application with a FastAPI backend and React frontend.
+-   **Backend:** JWT authentication, role-based access control, and extensive CRUD APIs for core features. It includes simulated services for notifications, payments, and ML scoring. Several new features were just added:
+    -   **Client Rating System:** API to rate clients post-appointment, which feeds into the ML score.
+    -   **Internal Messaging:** A real-time chat system between the Super Admin and Business clients.
+    -   **100% Automated Post-Appointment Workflow:** A complete, trigger-based system using a background queue () to send thank-you/loyalty messages when an appointment is marked completed.
+    -   **Enriched Onboarding:** Backend logic to support saving business timezone and opening hours.
+-   **Frontend:** A comprehensive UI with role-specific dashboards, landing page, and authentication. Recent additions include:
+    -   Pages for client rating, business-admin messaging, and post-appointment automation analytics.
+    -   A new setup page for businesses to configure their timezone and hours.
+    -   New 2000% pertinent widgets on both Admin and Business dashboards (e.g., at-risk businesses, top performers, unread messages, items needing action).
 
 **Last working item**:
--   **Last item agent was working on:** The agent received a new set of feature requests from the user and was preparing to start implementation.
--   **Status**: NOT STARTED
--   **Agent Testing Done**: N/A
--   **Which testing method agent to use?**: both (After implementing the new features, a full test run using both the frontend and backend testing agents will be required).
+-   **Last item agent was working on:** Implementing the credit-based monetization system. The user requested this feature, along with integrating Resend for emails and Stripe for pay-as-you-go billing. The agent had started creating the backend services and frontend components but was interrupted by a new request for a Wheel of Fortune feature.
+-   **Status**: IN PROGRESS
+-   **Agent Testing Done**: N
+-   **Which testing method agent to use?**: both. Once the credit system is complete, the entire monetization and automation flow needs end-to-end testing.
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Test Suite Language Dependency (Low Priority)**
-    -   **Description:** An early test failed because it relied on a French placeholder (Rechercher...). While recent tests passed (likely due to using ), the initial issue was never formally resolved.
-    -   **Attempted fixes:** None.
-    -   **Next debug checklist:** Perform an audit of any remaining test files to ensure all selectors use language-agnostic  attributes instead of text or placeholders.
-    -   **Why fix this issue and what will be achieved with the fix?**: This ensures the test suite is robust and not dependent on the UI language.
+-   **Issue 1: Test Suite Language Dependency (Priority: Low)**
+    -   **Description:** An early test failed because it relied on a French placeholder (Rechercher...). While not currently blocking (tests use ), the underlying issue was never resolved.
+    -   **Why fix this issue and what will be achieved with the fix?**: Ensures the test suite is robust and not dependent on UI language changes.
     -   **Status**: NOT STARTED
     -   **Is recurring issue?**: N
     -   **Should Test frontend/backend/both after fix?**: frontend
 
 **In progress Task List**:
-There are no partially completed tasks. The agent was about to start a new batch of work.
+-   **Task 1: Complete the Credit, Billing, and Email System (Priority: P0 - HIGHEST)**
+    -   **Where to resume**: The agent was mid-implementation.
+        -   **Backend:** The initial  and API endpoints in  have been created. The next steps are to fully implement the logic using the Resend and Stripe playbooks (already fetched), update the  model to include credit limits, and modify  to check and deduct credits before sending messages.
+        -   **Frontend:** The file  exists but is a placeholder. It needs to be built out to show credit balances, purchase options (linking to Stripe), and usage history. The navigation link also needs to be added to the business layout.
+    -   **What will be achieved with this?**: This will complete the core monetization loop for the SaaS platform, allowing the Super Admin to set limits on plans and businesses to purchase more capacity.
+    -   **Status**: IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?**: both
 
 **Upcoming and Future Tasks**
--   **Upcoming Tasks (P0, from User Message #185):**
-    -   **Client Rating System:** Implement a feature for businesses to rate clients (e.g., on punctuality) after a completed appointment. This data should be used to enhance the ML no-show prediction score.
-    -   **Customizable Thank-You Messages:** Develop a system to send automated, customizable thank-you/loyalty messages to clients who have honored their appointments. The message should support including links.
+-   **Upcoming Tasks (P0):**
+    -   **Configurable Wheel of Fortune**: As per the user's latest request, build a feature for businesses to create a gamified reward system. It needs to be configurable (tasks to perform, prizes) and linked in the automated thank-you messages.
 -   **Upcoming Tasks (P1):**
-    -   **2000% Pertinent Dashboard Tools:** Ideate and implement new, high-value widgets and tools for both the Super Admin and Business dashboards, as per the user's recurring request for more pertinent features.
-    -   **Multi-channel Notification Fallback:** Implement logic in  so that if an SMS notification fails to send, the system automatically sends an email as a backup.
--   **Future Tasks (P2 & Backlog):**
-    -   **Enriched Onboarding:** Enhance the new business sign-up process to include configuration for timezone and business opening hours.
-    -   **Outlook / iCal Integration:** Build out the calendar integration for Outlook and iCal, similar to the existing (simulated) Google Calendar feature.
-    -   **Activate Real Integrations:** Connect the simulated services to real APIs by adding user-provided keys for Stripe and Twilio.
-    -   **External API Preparation:** Finalize the backend structure to accept appointments from third-party platforms like TheFork or OpenTable.
+    -   **2000% Pertinent Dashboard Tools:** This is a recurring user request. Continue to ideate and add high-value widgets to the dashboards.
+    -   **Multi-channel Notification Fallback:** Explicitly implement the logic in  or  for if an SMS fails, an email is sent as a backup.
+-   **Future Tasks (Backlog):**
+    -   **Activate Real Integrations:** Fully connect Stripe and Twilio with user-provided API keys.
+    -   **Outlook / iCal Integration:** Build calendar integrations for Outlook and iCal.
+    -   **External API for Appointments:** Accept appointments from third-party platforms like TheFork or OpenTable.
 
 **Completed work in this session**
-The agent completed a massive multi-phase feature implementation, including:
--   **Bug Fix:** Corrected a critical bug on the client-facing appointment reschedule page.
--   **Simulated Services:** Created backend services for Notifications, Stripe Payments, ML Scoring, and Google Calendar Sync.
--   **CRUD for Plans:** Built a full UI and API for the Super Admin to create, read, update, and delete subscription plans.
--   **ML Scoring Page:** Implemented a dedicated page to display no-show risk analysis and predictions.
--   **Integrations Page:** Created a UI for businesses to manage connections to external services (Google Calendar, etc.).
--   **Editable Message Templates:** Built a system and UI for businesses to customize their client-facing notifications.
--   **Appointment Source Tracking:** Added functionality to track and filter appointments by their source (Manual, Calendar, API).
--   **UI/UX Overhaul:** Significantly enriched all dashboards with new KPIs, charts, navigation links, and utility components.
--   **Testing:** Successfully ran multiple end-to-end tests via the testing agent, which also identified and helped fix a backend route ordering issue.
+-   **Client Rating System:** Implemented full-stack feature for businesses to rate clients, which now influences the ML no-show score. (DONE)
+-   **Internal Admin-Business Chat:** Created a full-stack messaging system for direct communication. (DONE)
+-   **2000% Pertinent Widgets:** Added several insightful new widgets to both Admin and Business dashboards. (DONE)
+-   **100% Automated Post-Appointment Workflow:** Built a complete, trigger-based system with a background queue to automatically send marketing messages after a completed appointment. (DONE)
+-   **Enriched Onboarding:** Implemented the UI and backend to capture a business's timezone and opening hours during setup. (DONE)
+-   **Comprehensive Testing:** Successfully passed two full test suites (28/28 and 21/21) using the testing agent, validating all new features.
 
 **Earlier issues found/mentioned but not fixed**
-- The language-dependency issue in the test suite (mentioned in All Pending/In progress Issue list) is the only known unresolved item from previous discussions.
+-   The language-dependency issue in the test suite is the only known unresolved item.
 
 **Known issue recurrence from previous fork**
-- None.
+-   None.
 
 **Code Architecture**
 
@@ -85,85 +90,79 @@ The agent completed a massive multi-phase feature implementation, including:
 -   **Backend:** FastAPI, Python, Pydantic, PyMongo
 -   **Database:** MongoDB
 -   **Authentication:** JWT with role-based access control.
--   **Architecture:** Multi-tenant SaaS with a service-oriented structure on the backend. Features are developed in a simulation mode, ready for API key activation.
+-   **Architecture:** Multi-tenant SaaS with a service-oriented backend. Key features include background task processing for automated workflows.
 
 **key DB schema**
 -   **users:** 
 -   **businesses:** 
 -   **appointments:** 
 -   **plans:** 
--   **templates:** 
--   **notifications:** 
+-   **messages (New):** 
+-   **post_appointment_messages (New):** 
 
 **changes in tech stack**
-- None.
+-   **Resend:** Chosen for email integration (implementation in progress).
+-   **Stripe:** Chosen for pay-as-you-go credit purchases (implementation in progress).
 
 **All files of reference**
--   : The core backend file, heavily expanded with new routes.
--   : Directory containing all new business logic modules.
--   : UI for plan management.
--   : UI for editing message templates.
--   : UI for managing integrations.
--   : UI for viewing risk analysis.
--   : Contains all the new frontend routes.
--   : The product requirements document, which was updated.
+-   : Heavily modified with new endpoints for ratings, messaging, automation, and credits.
+-   : New service that handles the post-appointment queue.
+-   : New service for managing credits (in progress).
+-   : Contains many new pages for the features implemented.
+-   : New page for admin messaging.
+-   , : Updated with new navigation links.
+-   , : Updated with new widgets.
 
 **Areas that need refactoring**:
-- The codebase is in good shape. The agent performed significant refactoring by moving logic into a  directory, improving modularity. No immediate refactoring is required.
+-   None. The code is well-structured.
 
 **key api endpoints**
--   
--    (Full CRUD and specialty routes like , )
--    (Full CRUD for subscription plans)
--   
--   
--    (Full CRUD for message templates)
--    (Simulated Google Calendar sync)
--    (ML scoring)
+-   : To rate a client.
+-   : Full CRUD for internal admin-business chat.
+-   : Get analytics for the post-appointment workflow.
+-   : Get the history of automated messages.
+-   : To save business timezone and hours.
+-   : Endpoints for managing credits (in progress).
 
 **Critical Info for New Agent**
--   **Follow User Directives:** The user provides very specific, multi-step feature requests. Adhere to these plans closely, particularly the latest one in message #185.
--   **Simulate First, Activate Later:** Continue the established pattern of building features (like payments and notifications) in a simulated mode. The code should be structured to be easily activated with real API keys later. Do not ask for keys until the simulated structure is complete.
--   **Propose Pertinent Features:** The user repeatedly asks for 2000% pertinent tools. Be proactive in suggesting and adding valuable new widgets, KPIs, or utilities to the dashboards that align with the app's goal of reducing no-shows and saving money.
+-   **Prioritize Monetization:** The immediate task is to finish the credit, billing, and email system (Task 1 in In progress Task List). This is the user's highest priority.
+-   **Follow the Plan:** After completing the credit system, proceed to the Wheel of Fortune feature as requested by the user.
+-   **Integrate with Playbooks:** Use the fetched playbooks for Resend and Stripe to implement the credit system. Do not deviate.
 -   **Language is French:** All communication with the user MUST be in French.
 
 **documents and test reports created in this job**
--    (updated)
--   Multiple test reports in  were generated by the testing agent.
+-    (updated twice)
+-   
+-   
 
 **Last 10 User Messages and any pending HUMAN messages**
-- The last several interactions followed a consistent and positive pattern:
-    1.  **User (e.g., #140, #185):** Requests a new batch of features, sometimes providing a detailed guide.
-    2.  **Agent:** Confirms understanding and presents a plan.
-    3.  **Agent:** Implements the features in parallel, creating/updating backend and frontend files.
-    4.  **Agent:** Tests the new endpoints and functionality, often showing screenshots of the new UI.
-    5.  **Agent:** Runs a full suite of tests using the .
-    6.  **Agent:** Confirms all tests have passed and presents the finished work.
--   **Pending Message (User #185):** The user's last message is the current set of instructions, requesting a client rating system, thank-you messages, more dashboard tools, and several backlog items. This is the starting point for the next agent.
+-   The user provided a detailed spec for a 100% automated marketing workflow, which the agent successfully built and tested.
+-   The user then requested the next major feature: a credit/monetization system using Resend for emails and Stripe for billing.
+-   The user confirmed the choice of Resend and the billing model.
+-   While the agent was in the middle of implementing this, the user provided another new feature request: a configurable Wheel of Fortune and reiterated the need for 2000% pertinent tools.
+-   **Pending Action:** The agent acknowledged the new Wheel of Fortune request and stated it would work on it *after* completing the in-progress credit system. The next agent must follow this plan.
 
 **Project Health Check:**
--   **Broken**: None. All known bugs have been fixed and validated by the testing agent.
+-   **Broken**: None.
 -   **Mocked**:
-    -   **Notifications (Twilio):** The service logic and queues are built, but it does not send real SMS/WhatsApp messages.
-    -   **Payments (Stripe):** The service and endpoints are ready, but no real transactions are processed.
-    -   **Google Calendar Sync:** The flow is simulated; it does not perform a real OAuth connection.
-    -   **ML Scoring:** Uses a simple, rule-based heuristic, not a trained machine learning model.
+    -   **Notifications (Twilio):** Logic exists, but no real messages are sent.
+    -   **Payments (Stripe):** The service is simulated, but a real integration is now in progress for credit purchases.
+    -   **Email (Resend):** An integration is in progress to replace the simulated email logic.
+    -   **ML Scoring:** Uses a rule-based heuristic, not a real ML model.
 
 **3rd Party Integrations**
--   **Stripe (Payments):** Planned & Simulated. Requires User API Key for activation.
+-   **Stripe (Payments):** In progress for pay-as-you-go credits. Requires User API Key.
+-   **Resend (Email):** In progress for automated marketing emails. Requires User API Key.
 -   **Twilio (SMS/WhatsApp):** Planned & Simulated. Requires User API Key for activation.
--   **Google Calendar:** Planned & Simulated. Requires User OAuth Credentials for activation.
--   **Outlook / iCal:** Planned.
--   **TheFork / OpenTable:** Planned (backend structure prepared).
+-   **Google Calendar:** Planned & Simulated.
 
 **Testing status**
--   **Testing agent used after significant changes**: YES. The testing agent was used multiple times successfully in this session.
--   **Troubleshoot agent used after agent stuck in loop**: NO.
--   **Test files created**: No new persistent test files were created, but the testing agent ran its own suite.
--   **Known regressions**: None. Previously reported bugs (reschedule flow, navigation) have been fixed.
+-   **Testing agent used after significant changes**: YES. Used twice in this session, with all tests passing.
+-   **Test files created**: None.
+-   **Known regressions**: None.
 
 **Credentials to test flow:**
--   No specific credentials exist. The agent must use the registration flow to create a , a , and  users as needed for testing.
+-   Register new users via the application's UI for , , and  roles as needed.
 
 **What agent forgot to execute**
-- The agent was highly effective and addressed almost all user requests. The only missed item is a minor, low-priority task: updating a test selector to be language-agnostic. This has had no impact on recent progress.</analysis>
+-   The agent has been highly effective. The only pending item from previous sessions is the minor, low-priority task of updating a test selector to be language-agnostic.</analysis>

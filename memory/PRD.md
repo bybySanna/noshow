@@ -7,7 +7,7 @@ SaaS anti no-show permettant aux entreprises (restaurants, salons, coachs) de r�
 - **Frontend**: React (mobile-first, dark/light mode, bilingue FR/EN)
 - **Backend**: FastAPI + MongoDB
 - **Auth**: JWT custom
-- **URL**: https://appointment-armor.preview.emergentagent.com
+- **URL**: https://appointment-app-demo.preview.emergentagent.com
 
 ## Ce qui est implémenté
 
