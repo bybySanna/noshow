@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Plus, CheckCircle, X, Clock } from 'lucide-react';
+import { Calendar, Plus, CheckCircle, X, Clock, RefreshCw, ChevronRight, Search } from 'lucide-react';
 import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useLang } from '../../context/LangContext';
@@ -28,12 +29,15 @@ export default function StaffDashboard() {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [search, setSearch] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
   const today = new Date().toISOString().split('T')[0];
 
   useEffect(() => { fetchAppointments(); }, []);
 
-  const fetchAppointments = async () => {
+  const fetchAppointments = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
     try {
       const res = await axios.get(`${API}/appointments`);
       setAppointments(res.data);
@@ -41,10 +45,23 @@ export default function StaffDashboard() {
       toast.error('Error');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
+  const updateStatus = async (id, status) => {
+    try {
+      await axios.put(`${API}/appointments/${id}`, { status });
+      toast.success(lang === 'fr' ? 'Statut mis à jour' : 'Status updated');
+      fetchAppointments(true);
+    } catch { toast.error('Error'); }
+  };
+
   const todayAppts = appointments.filter(a => a.date === today);
+  const filteredAppts = appointments.filter(a => 
+    a.client_name?.toLowerCase().includes(search.toLowerCase()) ||
+    a.client_phone?.includes(search)
+  );
 
   return (
     <div className="min-h-screen bg-background font-body pb-20">
@@ -60,6 +77,9 @@ export default function StaffDashboard() {
           </div>
         </div>
         <div className="flex items-center gap-1">
+          <button onClick={() => fetchAppointments(true)} className="p-1.5 rounded-full hover:bg-muted" data-testid="staff-refresh-btn">
+            <RefreshCw className={cn("w-4 h-4 text-muted-foreground", refreshing && "animate-spin")} />
+          </button>
           <button onClick={toggleTheme} className="p-1.5 rounded-full hover:bg-muted">
             {theme === 'dark' ? <Sun className="w-4 h-4 text-muted-foreground" /> : <Moon className="w-4 h-4 text-muted-foreground" />}
           </button>
@@ -129,11 +149,26 @@ export default function StaffDashboard() {
         )}
 
         {/* All appointments */}
-        <h2 className="font-heading font-700 text-base mb-3">
-          {lang === 'fr' ? 'Tous les RDV' : 'All Appointments'}
-        </h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-heading font-700 text-base">
+            {lang === 'fr' ? 'Tous les RDV' : 'All Appointments'}
+          </h2>
+        </div>
+        
+        {/* Search */}
+        <div className="relative mb-3">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input 
+            placeholder={lang === 'fr' ? 'Rechercher...' : 'Search...'}
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-9 h-10 rounded-xl"
+            data-testid="staff-search"
+          />
+        </div>
+        
         <div className="space-y-2">
-          {appointments.slice(0, 10).map(appt => {
+          {(search ? filteredAppts : appointments).slice(0, 15).map(appt => {
             const statusConf = STATUS_CONFIG[appt.status] || STATUS_CONFIG.pending;
             return (
               <div key={appt.id} className="bg-card rounded-xl border border-border/50 p-3 flex items-center gap-3">
@@ -143,10 +178,20 @@ export default function StaffDashboard() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-heading font-700 text-sm">{appt.client_name}</p>
+                  <p className="text-xs text-muted-foreground">{appt.client_phone}</p>
                 </div>
                 <span className={cn("text-[11px] font-heading font-700 px-2 py-0.5 rounded-full", statusConf.className)}>
                   {lang === 'fr' ? statusConf.label_fr : statusConf.label_en}
                 </span>
+                {appt.status === 'pending' && (
+                  <button 
+                    onClick={() => updateStatus(appt.id, 'confirmed')}
+                    className="p-1.5 rounded-full bg-green-100 dark:bg-green-900/20 hover:bg-green-200 dark:hover:bg-green-900/40 transition-colors"
+                    data-testid="staff-confirm-btn"
+                  >
+                    <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  </button>
+                )}
               </div>
             );
           })}
