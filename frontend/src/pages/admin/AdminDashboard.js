@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Calendar, TrendingDown, DollarSign, Users, Activity, ArrowUpRight, ArrowDownRight, Bell, AlertTriangle, CheckCircle, Zap } from 'lucide-react';
+import { Building2, Calendar, TrendingDown, DollarSign, Users, Activity, ArrowUpRight, ArrowDownRight, Bell, AlertTriangle, CheckCircle, Zap, Send, Server, RefreshCw } from 'lucide-react';
 import AdminLayout from '../../components/AdminLayout';
 import { useLang } from '../../context/LangContext';
+import { Button } from '../../components/ui/button';
 import axios from 'axios';
 import { API } from '../../context/AuthContext';
 import { toast } from 'sonner';
@@ -14,23 +15,44 @@ export default function AdminDashboard() {
   const [chartData, setChartData] = useState([]);
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [systemHealth, setSystemHealth] = useState(null);
+  const [showBroadcast, setShowBroadcast] = useState(false);
+  const [broadcastMsg, setBroadcastMsg] = useState('');
+  const [sending, setSending] = useState(false);
 
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     try {
-      const [statsRes, chartRes, actRes] = await Promise.all([
+      const [statsRes, chartRes, actRes, healthRes] = await Promise.all([
         axios.get(`${API}/admin/dashboard`),
         axios.get(`${API}/admin/stats`),
         axios.get(`${API}/admin/activity?limit=5`),
+        axios.get(`${API}/admin/system-health`),
       ]);
       setStats(statsRes.data);
       setChartData(chartRes.data.monthly_signups || []);
       setActivity(actRes.data);
+      setSystemHealth(healthRes.data);
     } catch (err) {
       toast.error('Erreur chargement stats admin');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const sendBroadcast = async () => {
+    if (!broadcastMsg.trim()) return;
+    setSending(true);
+    try {
+      await axios.post(`${API}/admin/broadcast`, { message: broadcastMsg, subject: 'Message de NoShowGone' });
+      toast.success(lang === 'fr' ? 'Message envoyé à tous les clients' : 'Broadcast sent to all clients');
+      setShowBroadcast(false);
+      setBroadcastMsg('');
+    } catch {
+      toast.error('Erreur');
+    } finally {
+      setSending(false);
     }
   };
 
