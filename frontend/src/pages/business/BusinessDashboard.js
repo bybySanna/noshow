@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, TrendingDown, TrendingUp, CheckCircle, AlertCircle, Plus, ArrowRight, Clock, Users, Zap, Bell, RefreshCw, Brain, Link2 } from 'lucide-react';
+import { Calendar, TrendingDown, TrendingUp, CheckCircle, AlertCircle, Plus, ArrowRight, Clock, Users, Zap, Bell, RefreshCw, Brain, Link2, Star, Heart, MessageSquare } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { useAuth } from '../../context/AuthContext';
 import { useLang } from '../../context/LangContext';
@@ -30,22 +30,31 @@ export default function BusinessDashboard() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [unratedCount, setUnratedCount] = useState(0);
+  const [unthankCount, setUnthankCount] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     try {
-      const [statsRes, todayRes, upcomingRes, bizRes] = await Promise.all([
+      const [statsRes, todayRes, upcomingRes, bizRes, unratedRes, completedRes, msgRes] = await Promise.all([
         axios.get(`${API}/stats/business`),
         axios.get(`${API}/appointments/today`),
         axios.get(`${API}/appointments/upcoming?days=7`),
         axios.get(`${API}/businesses/me`),
+        axios.get(`${API}/clients/unrated-appointments`).catch(() => ({ data: [] })),
+        axios.get(`${API}/appointments?status=completed`).catch(() => ({ data: [] })),
+        axios.get(`${API}/business/messages/unread-count`).catch(() => ({ data: { count: 0 } })),
       ]);
       setStats(statsRes.data);
       setTodayAppts(todayRes.data);
       setUpcoming(upcomingRes.data);
       setBusiness(bizRes.data);
+      setUnratedCount(unratedRes.data.length);
+      setUnthankCount(completedRes.data.filter(a => !a.thankyou_sent).length);
+      setUnreadMessages(msgRes.data.count);
     } catch (err) {
       toast.error('Erreur chargement');
     } finally {
@@ -187,22 +196,87 @@ export default function BusinessDashboard() {
       <div className="grid grid-cols-2 gap-3">
         {[
           { to: '/calendar', icon: Calendar, label_fr: 'Calendrier', label_en: 'Calendar', color: 'text-primary', bg: 'bg-primary/10' },
+          { to: '/client-ratings', icon: Star, label_fr: 'Notations', label_en: 'Ratings', color: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-100 dark:bg-yellow-900/20', badge: unratedCount },
+          { to: '/thankyou', icon: Heart, label_fr: 'Remerciements', label_en: 'Thank You', color: 'text-pink-600 dark:text-pink-400', bg: 'bg-pink-100 dark:bg-pink-900/20', badge: unthankCount },
+          { to: '/messages', icon: MessageSquare, label_fr: 'Messages', label_en: 'Messages', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/20', badge: unreadMessages },
           { to: '/ml-scoring', icon: Brain, label_fr: 'Scoring ML', label_en: 'ML Scoring', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-900/20' },
-          { to: '/analytics', icon: TrendingUp, label_fr: 'Statistiques', label_en: 'Analytics', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/20' },
           { to: '/clients', icon: Users, label_fr: 'Mes Clients', label_en: 'My Clients', color: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-100 dark:bg-teal-900/20' },
           { to: '/integrations', icon: Link2, label_fr: 'Intégrations', label_en: 'Integrations', color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-100 dark:bg-indigo-900/20' },
           { to: '/clients-risk', icon: AlertCircle, label_fr: 'Clients à risque', label_en: 'At-risk clients', color: 'text-accent', bg: 'bg-orange-100 dark:bg-orange-900/20' },
-          { to: '/notifications', icon: Bell, label_fr: 'Notifications', label_en: 'Notifications', color: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/20' },
-          { to: '/staff', icon: Users, label_fr: 'Équipe', label_en: 'Staff', color: 'text-pink-600 dark:text-pink-400', bg: 'bg-pink-100 dark:bg-pink-900/20' },
         ].map((item, i) => (
-          <Link key={i} to={item.to} className="bg-card rounded-xl border border-border/50 p-4 flex items-center gap-3 hover:border-primary/30 transition-all card-shadow" data-testid={`quick-link-${i}`}>
+          <Link key={i} to={item.to} className="bg-card rounded-xl border border-border/50 p-4 flex items-center gap-3 hover:border-primary/30 transition-all card-shadow relative" data-testid={`quick-link-${i}`}>
             <div className={`w-8 h-8 ${item.bg} rounded-xl flex items-center justify-center flex-shrink-0`}>
               <item.icon style={{width:'16px', height:'16px'}} className={item.color} />
             </div>
             <span className="text-sm font-heading font-600 leading-tight">{lang === 'fr' ? item.label_fr : item.label_en}</span>
+            {item.badge > 0 && (
+              <span className="absolute top-2 right-2 bg-accent text-white text-[10px] font-heading font-700 px-1.5 py-0.5 rounded-full">
+                {item.badge}
+              </span>
+            )}
           </Link>
         ))}
       </div>
+
+      {/* Action Cards - 2000% Pertinent */}
+      {(unratedCount > 0 || unthankCount > 0 || unreadMessages > 0) && (
+        <div className="mt-5 space-y-3">
+          <h3 className="font-heading font-700 text-sm text-muted-foreground">
+            {lang === 'fr' ? 'Actions recommandées' : 'Recommended Actions'}
+          </h3>
+          
+          {unratedCount > 0 && (
+            <Link to="/client-ratings" className="flex items-center gap-3 p-4 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800/30 rounded-xl hover:border-yellow-400 transition-all">
+              <div className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center">
+                <Star className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+              </div>
+              <div className="flex-1">
+                <p className="font-heading font-600 text-sm">
+                  {unratedCount} {lang === 'fr' ? 'client(s) à noter' : 'client(s) to rate'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {lang === 'fr' ? 'Améliorez vos prédictions ML' : 'Improve ML predictions'}
+                </p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+            </Link>
+          )}
+          
+          {unthankCount > 0 && (
+            <Link to="/thankyou" className="flex items-center gap-3 p-4 bg-pink-50 dark:bg-pink-900/10 border border-pink-200 dark:border-pink-800/30 rounded-xl hover:border-pink-400 transition-all">
+              <div className="w-10 h-10 bg-pink-100 dark:bg-pink-900/30 rounded-full flex items-center justify-center">
+                <Heart className="w-5 h-5 text-pink-600 dark:text-pink-400" />
+              </div>
+              <div className="flex-1">
+                <p className="font-heading font-600 text-sm">
+                  {unthankCount} {lang === 'fr' ? 'client(s) à remercier' : 'client(s) to thank'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {lang === 'fr' ? 'Fidélisez vos clients' : 'Build customer loyalty'}
+                </p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-pink-600 dark:text-pink-400" />
+            </Link>
+          )}
+          
+          {unreadMessages > 0 && (
+            <Link to="/messages" className="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/30 rounded-xl hover:border-blue-400 transition-all">
+              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                <MessageSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="flex-1">
+                <p className="font-heading font-600 text-sm">
+                  {unreadMessages} {lang === 'fr' ? 'message(s) non lu(s)' : 'unread message(s)'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {lang === 'fr' ? 'Du support NoShowGone' : 'From NoShowGone support'}
+                </p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            </Link>
+          )}
+        </div>
+      )}
 
       {/* Mobile FAB */}
       <button onClick={() => setShowAddModal(true)} className="md:hidden fixed bottom-20 right-4 w-14 h-14 bg-primary rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all active:scale-95 z-30" data-testid="fab-add">
