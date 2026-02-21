@@ -9,242 +9,138 @@ SaaS anti no-show permettant aux entreprises (restaurants, salons, coachs) de r�
 - **Auth**: JWT custom
 - **URL**: https://appointment-app-demo.preview.emergentagent.com
 
-## Ce qui est implémenté
+## Ce qui est implémenté (Session 22 Fév 2025)
 
-### Phase 1 - Core Features (Complète)
-- Authentification JWT avec 4 rôles (Super Admin, Business, Staff, Client)
-- CRUD rendez-vous avec statuts (pending, confirmed, cancelled, no_show, completed)
-- Page de confirmation client avec lien unique
-- Dashboards pour tous les rôles
-- Vue calendrier hebdomadaire
-- Gestion clients avec score de fiabilité
-- Analytics et statistiques
+### Roue de la Fortune - COMPLET ✅
 
-### Phase 2 - ML Scoring & Intégrations (Complète)
-- Algorithme ML avec 6 facteurs pondérés
-- Page /ml-scoring avec distribution des risques
-- Import Google Calendar (simulé)
-- Templates de messages éditables (6 par défaut)
+#### Page Publique (`/play/{code}`)
+- **Accès sans authentification** avec code unique par entreprise
+- **Roue visuelle animée** avec segments colorés (conic-gradient CSS)
+- **Actions à accomplir** configurées par l'entreprise (avis Google, follow réseaux, etc.)
+- **Case RGPD obligatoire** avec liens vers CGV et règles du jeu
+- **Validation anti-doublon** :
+  - Même téléphone bloqué le même jour
+  - Même email bloqué le même jour
+  - Max participations par client configurable
+- **Code de validation** format `WIN-XXXXXXXX` affiché après le gain
+- **Date d'expiration** configurable
 
-### Phase 3 - Notation & Fidélisation (Complète)
-- **Notation clients**: 4 critères (ponctualité, politesse, fiabilité, globale)
-- **Messages de remerciement**: Templates avec liens et variables dynamiques
-- **Chat interne Admin ↔ Business**: Messages bidirectionnels + notifications
-- **Insights Admin "2000% pertinents"**: Entreprises à risque, top performers, alertes
+#### Configuration Business (`/wheel`)
+**6 onglets** :
+1. **Segments** : Labels, probabilités, couleurs, codes promo
+2. **Actions** : Actions à accomplir (Google, Instagram, newsletter, etc.) avec liens et flag obligatoire
+3. **Lien & QR** : 
+   - URL unique personnalisée (ex: `/play/6BC5CA2B`)
+   - **QR Code généré** avec react-qr-code, téléchargeable
+   - Toggle activation roue
+4. **CGV & Règles** : Textes personnalisables pour RGPD
+5. **Validations** : Liste des gains en attente, validés, expirés - Bouton de validation
+6. **Stats** : Participations, gains validés, taux de conversion
 
-### Phase 4 - Automatisation 100% (Complète)
-- **Trigger automatique**: Dès qu'un RDV passe à "completed", les messages sont envoyés
-- **Page /automation**: Dashboard, queue, templates, paramètres
-- **Multi-canaux avec fallback**: SMS → WhatsApp → Email
-- **Retry automatique** avec backoff exponentiel
-
-### Phase 5 - Onboarding Enrichi (Complète)
-- **Page /setup**: Configuration guidée (timezone, horaires d'ouverture)
-- Barre de progression avec 7 étapes
-
-### Phase 6 - Crédits & Monétisation (Session 22 Fév 2025) ✨ NOUVEAU
-#### Système de Crédits
-- **Dashboard crédits** (`/credits`): Vue d'ensemble SMS/Email/WhatsApp
-- **Limites par plan**: SMS=10, Email=50, WhatsApp=10 (plan défaut)
-- **Jauges visuelles**: Usage, restants, pourcentage, alertes
-
-#### Achat de Crédits
-- **Packs prédéfinis**:
-  - SMS: 50 (2€), 200 (7€), 500 (15€), 1000 (25€)
-  - Email: 100 (0.50€), 500 (2€), 2000 (6€), 5000 (12€)
-  - WhatsApp: 50 (3.50€), 200 (12€), 500 (25€)
-- **Stripe Checkout**: Intégration complète avec clé test
-- **Mode simulation**: Toggle pour ajouter crédits sans paiement
-
-#### Pay-as-you-go
-- Recharge automatique quand crédits < seuil
-- Facturation mensuelle selon consommation
-
-#### Intégrations (Mode Simulation)
-- **Resend** (Email): Emplacement pour clé API (`RESEND_API_KEY=re_xxx`)
-- **Twilio** (SMS/WhatsApp): Emplacement pour clés (`TWILIO_*`)
-- **Stripe**: Clé test active (`sk_test_emergent`)
-
-### Phase 7 - Roue de la Fortune (Session 22 Fév 2025) ✨ NOUVEAU
-#### Configuration (`/wheel`)
-- **4 segments par défaut**: -10% (30%), -20% (15%), Cadeau (10%), -5% (45%)
-- **Personnalisation**: Label, couleur, probabilité, code promo
-- **Tâches requises**: Avis Google, suivre réseaux, newsletter, ou aucune
-- **Paramètres**: Validité (jours), tours max par client
-
-#### Fonctionnalités
-- **Aperçu visuel**: Roue SVG interactive avec animation
-- **Test de spin**: Bouton pour tester avec résultat en toast
-- **Légende des prix**: Affichage des probabilités
-
-#### API Publique
-- `GET /api/wheel/{business_id}/public`: Affichage pour clients
-- `POST /api/wheel/{business_id}/spin`: Fait tourner la roue
-- **Validation**: Max spins, tâche complétée, expiration
-
-#### Statistiques
-- Tours joués
-- Gains utilisés
-- Taux de conversion
-
-## Pages Frontend
-
-### Business
-| Route | Description |
-|-------|-------------|
-| /dashboard | KPIs, actions recommandées |
-| /appointments | Liste RDV + filtre source |
-| /calendar | Vue hebdomadaire |
-| /analytics | Charts, stats |
-| /clients | Gestion clients |
-| /client-ratings | Notation clients |
-| /thankyou | Messages de remerciement |
-| /automation | Dashboard automatisation |
-| /wheel | **NOUVEAU** Roue de la Fortune |
-| /ml-scoring | Scoring prédictif ML |
-| /clients-risk | Blacklist, alertes |
-| /notifications | Historique notifs |
-| /messages | Chat support + notifications |
-| /templates | Édition messages |
-| /integrations | Google Cal, APIs |
-| /credits | **NOUVEAU** Crédits & Facturation |
-| /staff | Équipe |
-| /setup | Onboarding enrichi |
-| /settings | Paramètres |
-
-### Admin
-| Route | Description |
-|-------|-------------|
-| /admin | Dashboard + Insights |
-| /admin/businesses | Gestion entreprises |
-| /admin/messaging | Chat avec entreprises |
-| /admin/plans | CRUD plans |
-| /admin/users | Utilisateurs |
-| /admin/activity | Logs activité |
-| /admin/stats | Analytics plateforme |
-
-## Schéma DB
-
-### Collection: payment_transactions (NOUVEAU)
-```json
-{
-  "id": "uuid",
-  "session_id": "cs_xxx (Stripe)",
-  "business_id": "uuid",
-  "credit_type": "sms|email|whatsapp",
-  "pack_key": "pack_50",
-  "quantity": 50,
-  "amount_cents": 200,
-  "currency": "eur",
-  "status": "initiated|complete|expired",
-  "payment_status": "pending|paid",
-  "created_at": "ISO date"
-}
+#### API Endpoints
+```
+GET  /api/wheel/config           - Configuration de la roue
+PUT  /api/wheel/config           - Mise à jour (merge intelligent)
+GET  /api/wheel/stats            - Statistiques
+GET  /api/wheel/link-info        - Infos du lien unique
+GET  /api/wheel/redemptions      - Liste des gains à valider
+GET  /api/wheel/{code}/public    - Données publiques (sans auth)
+POST /api/wheel/{code}/play      - Jouer (validation complète)
+POST /api/wheel/redeem           - Valider un gain
 ```
 
-### Collection: wheel_configs (NOUVEAU)
+### Système de Crédits - COMPLET ✅
+- Dashboard avec jauges SMS/Email/WhatsApp
+- Packs d'achat avec tarification
+- Stripe Checkout intégré (clé test)
+- Mode simulation disponible
+- Pay-as-you-go configurable
+
+### Fonctionnalités Précédentes (Sessions 1-2)
+- Authentification JWT multi-rôles
+- Gestion des RDV avec ML scoring
+- Automatisation post-RDV 100%
+- Messagerie interne Admin ↔ Business
+- Notation des clients
+- Templates personnalisables
+
+## Collections MongoDB
+
+### wheel_configs
 ```json
 {
   "business_id": "uuid",
+  "unique_code": "6BC5CA2B",
   "enabled": true,
   "title": "Roue de la Fortune",
   "subtitle": "Tentez votre chance !",
   "segments": [
     {"label": "-10%", "probability": 30, "color": "#10B981", "promo_code": "ROUE10"}
   ],
-  "tasks_required": ["google_review"],
+  "actions": [
+    {"key": "google_review", "label": "Laisser un avis Google", "link": "...", "required": true, "icon": "star"}
+  ],
+  "social_links": {"facebook": "...", "instagram": "..."},
+  "cgv_text": "...",
+  "rules_text": "...",
+  "require_gdpr": true,
   "expiry_days": 30,
   "max_spins_per_client": 1
 }
 ```
 
-### Collection: wheel_spins (NOUVEAU)
+### wheel_spins
 ```json
 {
   "id": "uuid",
   "business_id": "uuid",
-  "client_phone": "+33xxx",
+  "client_name": "Jean Dupont",
+  "client_phone": "0612345678",
+  "client_email": "jean@example.com",
   "prize_label": "-10%",
-  "promo_code": "ROUE10",
+  "validation_code": "WIN-23746F19",
+  "status": "pending|validated|expired",
   "expiry_date": "ISO date",
-  "redeemed": false
+  "created_at": "ISO date"
 }
 ```
 
-## Endpoints API
+## Tests Passés
+- **Iteration 6**: 16/16 backend (Crédits)
+- **Iteration 7**: 20/20 backend (Roue de Fortune)
+- **Frontend**: 100% pages vérifiées
+- **Flow E2E**: Spin → Code → Validation ✅
 
-### Crédits
-- `GET /api/credits/dashboard` - Dashboard complet
-- `GET /api/credits/check/{type}` - Vérifier solde
-- `GET /api/credits/packs` - Liste des packs
-- `POST /api/credits/checkout` - Créer session Stripe
-- `GET /api/credits/checkout/status/{id}` - Vérifier paiement
-- `POST /api/credits/purchase` - Achat simulation
-- `PUT /api/credits/pay-as-you-go` - Configurer auto-recharge
-- `GET /api/credits/history` - Historique
+## Mode SIMULATION Actif
+- **Resend (Email)**: `RESEND_API_KEY=re_xxx` dans backend/.env
+- **Twilio (SMS/WhatsApp)**: `TWILIO_*` dans backend/.env
+- **Stripe**: Mode test avec `sk_test_emergent` (fonctionnel)
 
-### Roue de Fortune
-- `GET /api/wheel/config` - Configuration
-- `PUT /api/wheel/config` - Sauvegarder
-- `GET /api/wheel/stats` - Statistiques
-- `GET /api/wheel/{id}/public` - Vue publique
-- `POST /api/wheel/{id}/spin` - Faire tourner
-- `POST /api/wheel/redeem` - Utiliser gain
+## Prochaines Tâches
 
-## Backlog
-
-### P0 (Clés API requises)
-- [ ] Intégration Twilio réelle (SMS/WhatsApp)
-- [ ] Intégration Resend réelle (Email)
-- [ ] Stripe en mode production
-
-### P1 (Prêt)
-- [x] ~~Système de crédits~~ ✅ FAIT
-- [x] ~~Roue de la Fortune~~ ✅ FAIT
-- [ ] Worker background pour retry automatique (cron job)
-- [ ] Heures calmes (ne pas envoyer la nuit)
-- [ ] Page publique de la roue pour clients
-
-### P2 (Futur)
-- [ ] Tracking des ouvertures d'email
-- [ ] Statistiques de conversion
-- [ ] Outlook / iCal intégration
-- [ ] App mobile native
+### P1 - À faire
+- [ ] Déplacer "Configuration des Intégrations" → Dashboard Admin uniquement
+- [ ] Widget "Plans" dans Business Dashboard avec upgrade
 - [ ] Widgets "2000% pertinents" supplémentaires
+
+### P2 - Backlog
+- [ ] Activer intégrations réelles (Twilio, Resend)
+- [ ] Worker background pour retry automatique
+- [ ] Intégration Outlook / iCal
+- [ ] Heures calmes (pas d'envoi la nuit)
 
 ## Comptes Démo
 - **Admin**: admin@noshow.com / admin123456
 - **Business**: demo@bellanapoli.com / demo123456
 
-## Services en Mode Simulation
-- **EmailService (Resend)**: Emails dans les logs, pas envoyés
-- **NotificationService (Twilio)**: SMS/WhatsApp simulés
-- **StripeService**: Paiements en mode test
-- **CalendarIntegrationService**: Google OAuth simulé
-- **MLScoringService**: Algorithme heuristique
-
-## Tests Passés
-- **Backend**: 16/16 tests (iteration 6)
-- **Frontend**: 100% pages vérifiées
-- **Stripe Checkout**: ✅ Sessions créées avec succès
-- **Roue de Fortune**: ✅ Configuration et spin fonctionnels
-
 ## Changelog
 
-### 22 Février 2025 (Session 3)
-- **Système de Crédits**: Dashboard, limites par plan, packs d'achat
-- **Stripe Checkout**: Intégration complète pour achat crédits
-- **Roue de la Fortune**: Configuration complète, aperçu, statistiques
-- **Tests**: 16/16 backend + 100% frontend
-
-### 21 Février 2025 (Session 2)
-- Automatisation 100% post-RDV
-- Multi-canaux avec fallback
-- Page /setup onboarding enrichi
-- 21/21 tests passés
-
-### 21 Février 2025 (Session 1)
-- Système de notation clients
-- Messages de remerciement
-- Chat interne Admin ↔ Business
-- 28/28 tests passés
+### 22 Février 2025 (Session 3) ✨
+- **Page Publique Roue** : `/play/{code}` accessible sans connexion
+- **Roue visuelle animée** : conic-gradient CSS avec animation
+- **Actions configurables** : avis Google, réseaux sociaux, newsletter
+- **Anti-doublon** : même jour + même tel/email bloqué
+- **Code de validation** : format WIN-XXXXXXXX unique
+- **QR Code** : génération avec react-qr-code
+- **Validation des gains** : onglet dédié avec statuts
+- **Tests** : 20/20 backend + flow E2E validé
