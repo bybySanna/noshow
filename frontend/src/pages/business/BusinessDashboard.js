@@ -187,8 +187,10 @@ export default function BusinessDashboard() {
       <div className="grid grid-cols-2 gap-3">
         {[
           { to: '/calendar', icon: Calendar, label_fr: 'Calendrier', label_en: 'Calendar', color: 'text-primary', bg: 'bg-primary/10' },
+          { to: '/ml-scoring', icon: Brain, label_fr: 'Scoring ML', label_en: 'ML Scoring', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-900/20' },
           { to: '/analytics', icon: TrendingUp, label_fr: 'Statistiques', label_en: 'Analytics', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/20' },
-          { to: '/clients', icon: Users, label_fr: 'Mes Clients', label_en: 'My Clients', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-900/20' },
+          { to: '/clients', icon: Users, label_fr: 'Mes Clients', label_en: 'My Clients', color: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-100 dark:bg-teal-900/20' },
+          { to: '/integrations', icon: Link2, label_fr: 'Intégrations', label_en: 'Integrations', color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-100 dark:bg-indigo-900/20' },
           { to: '/clients-risk', icon: AlertCircle, label_fr: 'Clients à risque', label_en: 'At-risk clients', color: 'text-accent', bg: 'bg-orange-100 dark:bg-orange-900/20' },
           { to: '/notifications', icon: Bell, label_fr: 'Notifications', label_en: 'Notifications', color: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/20' },
           { to: '/staff', icon: Users, label_fr: 'Équipe', label_en: 'Staff', color: 'text-pink-600 dark:text-pink-400', bg: 'bg-pink-100 dark:bg-pink-900/20' },
