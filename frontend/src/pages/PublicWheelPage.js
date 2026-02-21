@@ -8,11 +8,11 @@ import { toast, Toaster } from 'sonner';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 // Composant de roue visuelle avec animation
-const AnimatedWheel = ({ segments, spinning, onSpinEnd, result }) => {
+const AnimatedWheel = ({ segments = [], spinning, onSpinEnd, result }) => {
   const [rotation, setRotation] = useState(0);
   
   useEffect(() => {
-    if (spinning && result !== null) {
+    if (spinning && result !== null && segments.length > 0) {
       // Calculer l'angle pour atterrir sur le segment gagnant
       const segmentCount = segments.length;
       const segmentAngle = 360 / segmentCount;
@@ -30,6 +30,14 @@ const AnimatedWheel = ({ segments, spinning, onSpinEnd, result }) => {
   }, [spinning, result, segments.length, onSpinEnd]);
   
   const colors = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
+  
+  if (!segments || segments.length === 0) {
+    return (
+      <div className="w-72 h-72 mx-auto flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-white animate-spin" />
+      </div>
+    );
+  }
   
   // Calculer les segments avec angles
   const total = segments.length;
