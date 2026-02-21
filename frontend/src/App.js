@@ -20,12 +20,16 @@ import ClientsPage from './pages/business/ClientsPage';
 import IntegrationsPage from './pages/business/IntegrationsPage';
 import MLScoringPage from './pages/business/MLScoringPage';
 import TemplatesPage from './pages/business/TemplatesPage';
+import ClientRatingsPage from './pages/business/ClientRatingsPage';
+import ThankYouPage from './pages/business/ThankYouPage';
+import BusinessMessagesPage from './pages/business/BusinessMessagesPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminBusinesses from './pages/admin/AdminBusinesses';
 import AdminPlans from './pages/admin/AdminPlans';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminActivity from './pages/admin/AdminActivity';
 import AdminStats from './pages/admin/AdminStats';
+import AdminMessaging from './pages/admin/AdminMessaging';
 import StaffDashboard from './pages/staff/StaffDashboard';
 import ConfirmPage from './pages/public/ConfirmPage';
 import './App.css';
@@ -84,6 +88,9 @@ function AppRoutes() {
       <Route path="/integrations" element={<ProtectedRoute roles={['business_owner']}><IntegrationsPage /></ProtectedRoute>} />
       <Route path="/ml-scoring" element={<ProtectedRoute roles={['business_owner']}><MLScoringPage /></ProtectedRoute>} />
       <Route path="/templates" element={<ProtectedRoute roles={['business_owner']}><TemplatesPage /></ProtectedRoute>} />
+      <Route path="/client-ratings" element={<ProtectedRoute roles={['business_owner']}><ClientRatingsPage /></ProtectedRoute>} />
+      <Route path="/thankyou" element={<ProtectedRoute roles={['business_owner']}><ThankYouPage /></ProtectedRoute>} />
+      <Route path="/messages" element={<ProtectedRoute roles={['business_owner']}><BusinessMessagesPage /></ProtectedRoute>} />
 
       {/* Super Admin */}
       <Route path="/admin" element={<ProtectedRoute roles={['super_admin']}><AdminDashboard /></ProtectedRoute>} />
@@ -92,6 +99,7 @@ function AppRoutes() {
       <Route path="/admin/users" element={<ProtectedRoute roles={['super_admin']}><AdminUsers /></ProtectedRoute>} />
       <Route path="/admin/activity" element={<ProtectedRoute roles={['super_admin']}><AdminActivity /></ProtectedRoute>} />
       <Route path="/admin/stats" element={<ProtectedRoute roles={['super_admin']}><AdminStats /></ProtectedRoute>} />
+      <Route path="/admin/messaging" element={<ProtectedRoute roles={['super_admin']}><AdminMessaging /></ProtectedRoute>} />
 
       {/* Staff */}
       <Route path="/staff-dashboard" element={<ProtectedRoute roles={['staff']}><StaffDashboard /></ProtectedRoute>} />
