@@ -246,6 +246,71 @@ export default function AdminDashboard() {
               </Link>
             ))}
           </div>
+
+          {/* System Health & Broadcast */}
+          <div className="grid md:grid-cols-2 gap-5 mt-5">
+            {/* System Health */}
+            <div className="bg-card rounded-2xl border border-border/50 p-5 card-shadow">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-heading font-700 text-sm flex items-center gap-2">
+                  <Server className="w-4 h-4 text-muted-foreground" />
+                  {lang === 'fr' ? 'État du système' : 'System Health'}
+                </h2>
+                <button onClick={fetchData} className="p-1.5 rounded-full hover:bg-muted">
+                  <RefreshCw className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </div>
+              {systemHealth && (
+                <div className="space-y-2">
+                  {Object.entries(systemHealth).filter(([k]) => k !== 'last_check').map(([key, value]) => (
+                    <div key={key} className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground capitalize">{key.replace('_', ' ')}</span>
+                      <span className={`font-heading font-600 ${value === 'healthy' || value === 'active' ? 'text-green-600 dark:text-green-400' : value === 'simulation_mode' ? 'text-yellow-600 dark:text-yellow-400' : 'text-foreground'}`}>
+                        {value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Broadcast */}
+            <div className="bg-card rounded-2xl border border-border/50 p-5 card-shadow">
+              <h2 className="font-heading font-700 text-sm mb-4 flex items-center gap-2">
+                <Send className="w-4 h-4 text-muted-foreground" />
+                {lang === 'fr' ? 'Message broadcast' : 'Broadcast Message'}
+              </h2>
+              {showBroadcast ? (
+                <div className="space-y-3">
+                  <textarea 
+                    value={broadcastMsg}
+                    onChange={e => setBroadcastMsg(e.target.value)}
+                    placeholder={lang === 'fr' ? 'Votre message à tous les clients...' : 'Your message to all clients...'}
+                    className="w-full h-24 p-3 rounded-xl border border-border bg-background text-sm resize-none"
+                    data-testid="broadcast-textarea"
+                  />
+                  <div className="flex gap-2">
+                    <Button onClick={sendBroadcast} disabled={sending} className="flex-1 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 h-9 text-xs font-heading font-700" data-testid="send-broadcast-btn">
+                      {sending ? '...' : (lang === 'fr' ? 'Envoyer' : 'Send')}
+                    </Button>
+                    <Button onClick={() => setShowBroadcast(false)} variant="outline" className="rounded-full h-9 text-xs font-heading font-700">
+                      {lang === 'fr' ? 'Annuler' : 'Cancel'}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-xs text-muted-foreground mb-3">
+                    {lang === 'fr' ? 'Envoyez un message à tous vos clients en un clic' : 'Send a message to all your clients in one click'}
+                  </p>
+                  <Button onClick={() => setShowBroadcast(true)} variant="outline" className="rounded-full h-9 px-4 text-xs font-heading font-700" data-testid="open-broadcast-btn">
+                    <Send className="w-3.5 h-3.5 mr-1" />
+                    {lang === 'fr' ? 'Nouveau broadcast' : 'New broadcast'}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
         </>
       )}
     </AdminLayout>
