@@ -1913,6 +1913,755 @@ async def update_timezone(data: dict, user=Depends(get_current_user)):
     
     return {"success": True}
 
+# ============= CLIENT RATINGS =============
+@api_router.post("/appointments/{appointment_id}/rate-client")
+async def rate_client(appointment_id: str, data: dict, user=Depends(get_current_user)):
+    """Note un client après un RDV terminé"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    appt = await db.appointments.find_one({"id": appointment_id, "business_id": business_id}, {"_id": 0})
+    if not appt:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    rating = {
+        "id": str(uuid.uuid4()),
+        "appointment_id": appointment_id,
+        "business_id": business_id,
+        "client_phone": appt.get("client_phone"),
+        "client_name": appt.get("client_name"),
+        "punctuality": data.get("punctuality", 3),  # 1-5
+        "politeness": data.get("politeness", 3),  # 1-5
+        "reliability": data.get("reliability", 3),  # 1-5
+        "overall": data.get("overall", 3),  # 1-5
+        "comment": data.get("comment", ""),
+        "rated_by": user["id"],
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.client_ratings.insert_one(rating)
+    
+    # Marquer le RDV comme noté
+    await db.appointments.update_one(
+        {"id": appointment_id},
+        {"$set": {"client_rated": True, "client_rating": rating["overall"]}}
+    )
+    
+    return {k: v for k, v in rating.items() if k != "_id"}
+
+@api_router.get("/clients/{phone}/ratings")
+async def get_client_ratings(phone: str, user=Depends(get_current_user)):
+    """Récupère les notes d'un client"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    ratings = await db.client_ratings.find(
+        {"business_id": business_id, "client_phone": phone},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    
+    # Calculer les moyennes
+    if ratings:
+        avg_punctuality = sum(r.get("punctuality", 3) for r in ratings) / len(ratings)
+        avg_politeness = sum(r.get("politeness", 3) for r in ratings) / len(ratings)
+        avg_reliability = sum(r.get("reliability", 3) for r in ratings) / len(ratings)
+        avg_overall = sum(r.get("overall", 3) for r in ratings) / len(ratings)
+    else:
+        avg_punctuality = avg_politeness = avg_reliability = avg_overall = 0
+    
+    return {
+        "ratings": ratings,
+        "averages": {
+            "punctuality": round(avg_punctuality, 1),
+            "politeness": round(avg_politeness, 1),
+            "reliability": round(avg_reliability, 1),
+            "overall": round(avg_overall, 1)
+        },
+        "total_ratings": len(ratings)
+    }
+
+@api_router.get("/clients/unrated-appointments")
+async def get_unrated_appointments(user=Depends(get_current_user)):
+    """Liste les RDV terminés non notés"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    # RDV completed sans rating
+    appts = await db.appointments.find(
+        {
+            "business_id": business_id,
+            "status": "completed",
+            "client_rated": {"$ne": True}
+        },
+        {"_id": 0}
+    ).sort("date", -1).limit(50).to_list(50)
+    
+    return appts
+
+# ============= THANK YOU MESSAGES =============
+@api_router.post("/appointments/{appointment_id}/send-thankyou")
+async def send_thankyou(appointment_id: str, data: dict, user=Depends(get_current_user)):
+    """Envoie un message de remerciement"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    appt = await db.appointments.find_one({"id": appointment_id, "business_id": business_id}, {"_id": 0})
+    if not appt:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    # Récupérer le template ou utiliser le message personnalisé
+    message = data.get("message", "")
+    include_link = data.get("include_link", False)
+    link_url = data.get("link_url", "")
+    link_text = data.get("link_text", "")
+    
+    thankyou = {
+        "id": str(uuid.uuid4()),
+        "appointment_id": appointment_id,
+        "business_id": business_id,
+        "client_phone": appt.get("client_phone"),
+        "client_email": appt.get("client_email"),
+        "client_name": appt.get("client_name"),
+        "message": message,
+        "include_link": include_link,
+        "link_url": link_url,
+        "link_text": link_text,
+        "channel": data.get("channel", "email"),
+        "status": "sent",  # Simulation
+        "sent_by": user["id"],
+        "sent_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.thankyou_messages.insert_one(thankyou)
+    
+    # Marquer le RDV
+    await db.appointments.update_one(
+        {"id": appointment_id},
+        {"$set": {"thankyou_sent": True, "thankyou_sent_at": thankyou["sent_at"]}}
+    )
+    
+    return {k: v for k, v in thankyou.items() if k != "_id"}
+
+@api_router.get("/thankyou/templates")
+async def get_thankyou_templates(user=Depends(get_current_user)):
+    """Liste les templates de remerciement"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    templates = await db.thankyou_templates.find(
+        {"business_id": business_id},
+        {"_id": 0}
+    ).to_list(20)
+    
+    # Templates par défaut si vide
+    if not templates:
+        default_templates = [
+            {
+                "id": "default_thankyou",
+                "business_id": business_id,
+                "name": "Remerciement standard",
+                "message": "Merci {{client_name}} pour votre visite ! Nous espérons vous revoir bientôt.",
+                "include_link": False,
+                "is_default": True
+            },
+            {
+                "id": "loyalty_thankyou",
+                "business_id": business_id,
+                "name": "Fidélité",
+                "message": "Merci {{client_name}} ! En tant que client fidèle, profitez de -10% sur votre prochaine visite avec le code MERCI10.",
+                "include_link": True,
+                "link_text": "Réserver maintenant",
+                "is_default": True
+            },
+            {
+                "id": "review_thankyou",
+                "business_id": business_id,
+                "name": "Demande d'avis",
+                "message": "Merci {{client_name}} ! Votre avis compte pour nous. Partagez votre expérience et aidez d'autres clients à nous découvrir.",
+                "include_link": True,
+                "link_text": "Donner mon avis",
+                "is_default": True
+            }
+        ]
+        for t in default_templates:
+            await db.thankyou_templates.insert_one(t)
+        templates = default_templates
+    
+    return templates
+
+@api_router.post("/thankyou/templates")
+async def create_thankyou_template(data: dict, user=Depends(get_current_user)):
+    """Crée un template de remerciement"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    template = {
+        "id": str(uuid.uuid4()),
+        "business_id": business_id,
+        "name": data.get("name", "Nouveau template"),
+        "message": data.get("message", ""),
+        "include_link": data.get("include_link", False),
+        "link_text": data.get("link_text", ""),
+        "link_url": data.get("link_url", ""),
+        "is_default": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.thankyou_templates.insert_one(template)
+    return {k: v for k, v in template.items() if k != "_id"}
+
+@api_router.put("/thankyou/templates/{template_id}")
+async def update_thankyou_template(template_id: str, data: dict, user=Depends(get_current_user)):
+    """Met à jour un template de remerciement"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    update_data = {
+        "name": data.get("name"),
+        "message": data.get("message"),
+        "include_link": data.get("include_link"),
+        "link_text": data.get("link_text"),
+        "link_url": data.get("link_url"),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    update_data = {k: v for k, v in update_data.items() if v is not None}
+    
+    await db.thankyou_templates.update_one(
+        {"id": template_id, "business_id": business_id},
+        {"$set": update_data}
+    )
+    
+    template = await db.thankyou_templates.find_one({"id": template_id}, {"_id": 0})
+    return template
+
+@api_router.delete("/thankyou/templates/{template_id}")
+async def delete_thankyou_template(template_id: str, user=Depends(get_current_user)):
+    """Supprime un template de remerciement"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    result = await db.thankyou_templates.delete_one(
+        {"id": template_id, "business_id": business_id, "is_default": {"$ne": True}}
+    )
+    
+    return {"deleted": result.deleted_count > 0}
+
+@api_router.post("/thankyou/bulk-send")
+async def bulk_send_thankyou(data: dict, user=Depends(get_current_user)):
+    """Envoie des remerciements en masse aux RDV terminés"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    template_id = data.get("template_id")
+    appointment_ids = data.get("appointment_ids", [])
+    
+    # Récupérer le template
+    template = await db.thankyou_templates.find_one({"id": template_id, "business_id": business_id}, {"_id": 0})
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    sent_count = 0
+    for appt_id in appointment_ids:
+        appt = await db.appointments.find_one({"id": appt_id, "business_id": business_id}, {"_id": 0})
+        if appt and not appt.get("thankyou_sent"):
+            # Personnaliser le message
+            message = template["message"].replace("{{client_name}}", appt.get("client_name", ""))
+            
+            thankyou = {
+                "id": str(uuid.uuid4()),
+                "appointment_id": appt_id,
+                "business_id": business_id,
+                "client_phone": appt.get("client_phone"),
+                "client_email": appt.get("client_email"),
+                "client_name": appt.get("client_name"),
+                "message": message,
+                "include_link": template.get("include_link", False),
+                "link_url": template.get("link_url", ""),
+                "link_text": template.get("link_text", ""),
+                "template_id": template_id,
+                "channel": "email",
+                "status": "sent",
+                "sent_by": user["id"],
+                "sent_at": datetime.now(timezone.utc).isoformat()
+            }
+            
+            await db.thankyou_messages.insert_one(thankyou)
+            await db.appointments.update_one(
+                {"id": appt_id},
+                {"$set": {"thankyou_sent": True, "thankyou_sent_at": thankyou["sent_at"]}}
+            )
+            sent_count += 1
+    
+    return {"sent": sent_count, "simulation_mode": True}
+
+@api_router.get("/thankyou/history")
+async def get_thankyou_history(user=Depends(get_current_user), limit: int = 50):
+    """Historique des messages de remerciement"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    messages = await db.thankyou_messages.find(
+        {"business_id": business_id},
+        {"_id": 0}
+    ).sort("sent_at", -1).limit(limit).to_list(limit)
+    
+    return messages
+
+# ============= INTERNAL CHAT SYSTEM (Admin <-> Business) =============
+@api_router.get("/admin/conversations")
+async def get_admin_conversations(user=Depends(require_super_admin)):
+    """Liste toutes les conversations admin"""
+    # Récupérer les derniers messages par business
+    pipeline = [
+        {"$sort": {"created_at": -1}},
+        {"$group": {
+            "_id": "$business_id",
+            "last_message": {"$first": "$message"},
+            "last_sender": {"$first": "$sender_role"},
+            "last_date": {"$first": "$created_at"},
+            "unread_count": {
+                "$sum": {"$cond": [{"$and": [{"$eq": ["$read", False]}, {"$eq": ["$sender_role", "business"]}]}, 1, 0]}
+            }
+        }}
+    ]
+    
+    conversations = await db.internal_messages.aggregate(pipeline).to_list(100)
+    
+    # Enrichir avec les infos business
+    result = []
+    for conv in conversations:
+        biz = await db.businesses.find_one({"id": conv["_id"]}, {"_id": 0, "name": 1, "business_type": 1})
+        if biz:
+            result.append({
+                "business_id": conv["_id"],
+                "business_name": biz.get("name"),
+                "business_type": biz.get("business_type"),
+                "last_message": conv["last_message"][:100] if conv["last_message"] else "",
+                "last_sender": conv["last_sender"],
+                "last_date": conv["last_date"],
+                "unread_count": conv["unread_count"]
+            })
+    
+    return sorted(result, key=lambda x: x.get("last_date", ""), reverse=True)
+
+@api_router.get("/admin/conversations/{business_id}")
+async def get_admin_conversation(business_id: str, user=Depends(require_super_admin)):
+    """Récupère une conversation avec un business"""
+    messages = await db.internal_messages.find(
+        {"business_id": business_id},
+        {"_id": 0}
+    ).sort("created_at", 1).to_list(200)
+    
+    # Marquer comme lus les messages du business
+    await db.internal_messages.update_many(
+        {"business_id": business_id, "sender_role": "business"},
+        {"$set": {"read": True}}
+    )
+    
+    biz = await db.businesses.find_one({"id": business_id}, {"_id": 0, "name": 1})
+    
+    return {
+        "business_id": business_id,
+        "business_name": biz.get("name") if biz else "Unknown",
+        "messages": messages
+    }
+
+@api_router.post("/admin/conversations/{business_id}")
+async def send_admin_message(business_id: str, data: dict, user=Depends(require_super_admin)):
+    """Envoie un message à un business"""
+    message = {
+        "id": str(uuid.uuid4()),
+        "business_id": business_id,
+        "sender_id": user["id"],
+        "sender_role": "admin",
+        "sender_name": user.get("full_name", "Admin"),
+        "message": data.get("message", ""),
+        "read": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.internal_messages.insert_one(message)
+    
+    # Créer une notification pour le business
+    notif = {
+        "id": str(uuid.uuid4()),
+        "business_id": business_id,
+        "type": "admin_message",
+        "title": "Message de NoShowGone",
+        "content": data.get("message", "")[:100],
+        "read": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.business_notifications.insert_one(notif)
+    
+    return {k: v for k, v in message.items() if k != "_id"}
+
+@api_router.post("/admin/conversations/group")
+async def send_group_message(data: dict, user=Depends(require_super_admin)):
+    """Envoie un message à plusieurs businesses"""
+    business_ids = data.get("business_ids", [])
+    message_text = data.get("message", "")
+    
+    sent_count = 0
+    for biz_id in business_ids:
+        message = {
+            "id": str(uuid.uuid4()),
+            "business_id": biz_id,
+            "sender_id": user["id"],
+            "sender_role": "admin",
+            "sender_name": user.get("full_name", "Admin"),
+            "message": message_text,
+            "is_group_message": True,
+            "read": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.internal_messages.insert_one(message)
+        
+        notif = {
+            "id": str(uuid.uuid4()),
+            "business_id": biz_id,
+            "type": "admin_message",
+            "title": "Message de NoShowGone",
+            "content": message_text[:100],
+            "read": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.business_notifications.insert_one(notif)
+        sent_count += 1
+    
+    return {"sent": sent_count}
+
+@api_router.delete("/admin/conversations/{business_id}/messages/{message_id}")
+async def delete_admin_message(business_id: str, message_id: str, user=Depends(require_super_admin)):
+    """Supprime un message"""
+    result = await db.internal_messages.delete_one({"id": message_id, "business_id": business_id})
+    return {"deleted": result.deleted_count > 0}
+
+# Business side - Conversations
+@api_router.get("/business/messages")
+async def get_business_messages(user=Depends(get_current_user)):
+    """Récupère les messages pour un business"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    messages = await db.internal_messages.find(
+        {"business_id": business_id},
+        {"_id": 0}
+    ).sort("created_at", 1).to_list(200)
+    
+    # Marquer comme lus les messages admin
+    await db.internal_messages.update_many(
+        {"business_id": business_id, "sender_role": "admin"},
+        {"$set": {"read": True}}
+    )
+    
+    return messages
+
+@api_router.post("/business/messages")
+async def send_business_message(data: dict, user=Depends(get_current_user)):
+    """Envoie un message au support admin"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    message = {
+        "id": str(uuid.uuid4()),
+        "business_id": business_id,
+        "sender_id": user["id"],
+        "sender_role": "business",
+        "sender_name": user.get("full_name", "Business"),
+        "message": data.get("message", ""),
+        "read": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.internal_messages.insert_one(message)
+    return {k: v for k, v in message.items() if k != "_id"}
+
+@api_router.get("/business/messages/unread-count")
+async def get_unread_count(user=Depends(get_current_user)):
+    """Compte les messages non lus"""
+    business_id = user.get("business_id")
+    if not business_id:
+        return {"count": 0}
+    
+    count = await db.internal_messages.count_documents({
+        "business_id": business_id,
+        "sender_role": "admin",
+        "read": False
+    })
+    
+    return {"count": count}
+
+# ============= BUSINESS NOTIFICATIONS =============
+@api_router.get("/business/notifications")
+async def get_business_notifications(user=Depends(get_current_user), limit: int = 50):
+    """Récupère les notifications pour un business"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    notifications = await db.business_notifications.find(
+        {"business_id": business_id},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    return notifications
+
+@api_router.put("/business/notifications/{notification_id}/read")
+async def mark_notification_read(notification_id: str, user=Depends(get_current_user)):
+    """Marque une notification comme lue"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    await db.business_notifications.update_one(
+        {"id": notification_id, "business_id": business_id},
+        {"$set": {"read": True}}
+    )
+    return {"success": True}
+
+@api_router.delete("/business/notifications/{notification_id}")
+async def delete_notification(notification_id: str, user=Depends(get_current_user)):
+    """Supprime une notification"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    result = await db.business_notifications.delete_one(
+        {"id": notification_id, "business_id": business_id}
+    )
+    return {"deleted": result.deleted_count > 0}
+
+@api_router.delete("/business/notifications")
+async def clear_all_notifications(user=Depends(get_current_user)):
+    """Supprime toutes les notifications"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    result = await db.business_notifications.delete_many({"business_id": business_id})
+    return {"deleted": result.deleted_count}
+
+@api_router.put("/business/notifications/read-all")
+async def mark_all_notifications_read(user=Depends(get_current_user)):
+    """Marque toutes les notifications comme lues"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    await db.business_notifications.update_many(
+        {"business_id": business_id},
+        {"$set": {"read": True}}
+    )
+    return {"success": True}
+
+# ============= ENHANCED ML SCORING WITH RATINGS =============
+@api_router.get("/ml/enhanced-risk-score/{phone}")
+async def get_enhanced_risk_score(phone: str, user=Depends(get_current_user)):
+    """Score de risque ML amélioré avec les notes clients"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    # Récupérer l'historique des RDV
+    appts = await db.appointments.find(
+        {"business_id": business_id, "client_phone": phone},
+        {"_id": 0}
+    ).to_list(100)
+    
+    # Récupérer les notes
+    ratings = await db.client_ratings.find(
+        {"business_id": business_id, "client_phone": phone},
+        {"_id": 0}
+    ).to_list(50)
+    
+    if not appts:
+        return {
+            "phone": phone,
+            "risk_score": 50,
+            "risk_level": "unknown",
+            "factors": [],
+            "has_history": False
+        }
+    
+    total = len(appts)
+    no_shows = sum(1 for a in appts if a.get("status") == "no_show")
+    completed = sum(1 for a in appts if a.get("status") == "completed")
+    confirmed = sum(1 for a in appts if a.get("status") == "confirmed")
+    
+    # Calcul du score de base (0-100, plus haut = plus risqué)
+    no_show_rate = no_shows / total if total > 0 else 0
+    base_score = no_show_rate * 60  # 60% du score basé sur le taux de no-show
+    
+    # Facteur de fiabilité basé sur les notes
+    rating_factor = 0
+    if ratings:
+        avg_punctuality = sum(r.get("punctuality", 3) for r in ratings) / len(ratings)
+        avg_reliability = sum(r.get("reliability", 3) for r in ratings) / len(ratings)
+        # Note moyenne transformée en facteur de risque
+        avg_rating = (avg_punctuality + avg_reliability) / 2
+        rating_factor = (5 - avg_rating) / 5 * 20  # 20% du score basé sur les notes
+    
+    # Facteur d'ancienneté
+    if total >= 5:
+        tenure_factor = -5  # Client fidèle, réduction du risque
+    else:
+        tenure_factor = 5  # Nouveau client, légère augmentation
+    
+    # Score final
+    risk_score = min(100, max(0, base_score + rating_factor + tenure_factor))
+    
+    # Niveau de risque
+    if risk_score >= 70:
+        risk_level = "high"
+    elif risk_score >= 40:
+        risk_level = "medium"
+    else:
+        risk_level = "low"
+    
+    factors = []
+    if no_show_rate > 0.3:
+        factors.append({"type": "negative", "text": f"Taux de no-show élevé ({round(no_show_rate*100)}%)"})
+    if ratings:
+        avg_rating = sum(r.get("overall", 3) for r in ratings) / len(ratings)
+        if avg_rating < 3:
+            factors.append({"type": "negative", "text": f"Notes client basses ({round(avg_rating, 1)}/5)"})
+        elif avg_rating >= 4:
+            factors.append({"type": "positive", "text": f"Excellentes notes ({round(avg_rating, 1)}/5)"})
+    if completed >= 3:
+        factors.append({"type": "positive", "text": f"{completed} RDV honorés"})
+    if total == 1:
+        factors.append({"type": "neutral", "text": "Premier RDV - historique limité"})
+    
+    return {
+        "phone": phone,
+        "risk_score": round(risk_score),
+        "risk_level": risk_level,
+        "factors": factors,
+        "stats": {
+            "total_appointments": total,
+            "no_shows": no_shows,
+            "completed": completed,
+            "confirmed": confirmed,
+            "no_show_rate": round(no_show_rate * 100, 1)
+        },
+        "ratings_summary": {
+            "total_ratings": len(ratings),
+            "avg_punctuality": round(sum(r.get("punctuality", 0) for r in ratings) / len(ratings), 1) if ratings else None,
+            "avg_reliability": round(sum(r.get("reliability", 0) for r in ratings) / len(ratings), 1) if ratings else None
+        },
+        "recommendations": [
+            "Demander un dépôt de garantie" if risk_level == "high" else None,
+            "Envoyer un rappel supplémentaire" if risk_level in ["high", "medium"] else None,
+            "Client fiable - aucune action requise" if risk_level == "low" else None
+        ]
+    }
+
+# ============= ADMIN PERTINENT STATS =============
+@api_router.get("/admin/insights")
+async def get_admin_insights(user=Depends(require_super_admin)):
+    """Insights pertinents pour l'admin"""
+    # Businesses à risque (taux de no-show élevé)
+    pipeline_risk = [
+        {"$group": {
+            "_id": "$business_id",
+            "total": {"$sum": 1},
+            "no_shows": {"$sum": {"$cond": [{"$eq": ["$status", "no_show"]}, 1, 0]}}
+        }},
+        {"$addFields": {
+            "no_show_rate": {"$cond": [{"$gt": ["$total", 0]}, {"$divide": ["$no_shows", "$total"]}, 0]}
+        }},
+        {"$match": {"no_show_rate": {"$gte": 0.3}, "total": {"$gte": 5}}},
+        {"$sort": {"no_show_rate": -1}},
+        {"$limit": 5}
+    ]
+    
+    at_risk = await db.appointments.aggregate(pipeline_risk).to_list(5)
+    
+    # Enrichir avec noms
+    at_risk_businesses = []
+    for r in at_risk:
+        biz = await db.businesses.find_one({"id": r["_id"]}, {"_id": 0, "name": 1})
+        if biz:
+            at_risk_businesses.append({
+                "business_id": r["_id"],
+                "business_name": biz["name"],
+                "no_show_rate": round(r["no_show_rate"] * 100, 1),
+                "total_appointments": r["total"]
+            })
+    
+    # Top performers
+    pipeline_top = [
+        {"$group": {
+            "_id": "$business_id",
+            "total": {"$sum": 1},
+            "completed": {"$sum": {"$cond": [{"$in": ["$status", ["completed", "confirmed"]]}, 1, 0]}}
+        }},
+        {"$addFields": {
+            "success_rate": {"$cond": [{"$gt": ["$total", 0]}, {"$divide": ["$completed", "$total"]}, 0]}
+        }},
+        {"$match": {"total": {"$gte": 10}}},
+        {"$sort": {"success_rate": -1}},
+        {"$limit": 5}
+    ]
+    
+    top_performers = await db.appointments.aggregate(pipeline_top).to_list(5)
+    
+    top_businesses = []
+    for r in top_performers:
+        biz = await db.businesses.find_one({"id": r["_id"]}, {"_id": 0, "name": 1})
+        if biz:
+            top_businesses.append({
+                "business_id": r["_id"],
+                "business_name": biz["name"],
+                "success_rate": round(r["success_rate"] * 100, 1),
+                "total_appointments": r["total"]
+            })
+    
+    # Abonnements expirant bientôt
+    soon = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
+    expiring = await db.businesses.find(
+        {"subscription.trial_ends_at": {"$lte": soon, "$gte": datetime.now(timezone.utc).isoformat()}},
+        {"_id": 0, "id": 1, "name": 1, "subscription": 1}
+    ).to_list(10)
+    
+    # Messages non lus
+    unread_messages = await db.internal_messages.count_documents({"sender_role": "business", "read": False})
+    
+    # RDV aujourd'hui toutes plateformes
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today_appts = await db.appointments.count_documents({"date": today})
+    
+    return {
+        "at_risk_businesses": at_risk_businesses,
+        "top_performers": top_businesses,
+        "expiring_trials": expiring,
+        "unread_support_messages": unread_messages,
+        "today_appointments_all": today_appts,
+        "generated_at": datetime.now(timezone.utc).isoformat()
+    }
+
+@api_router.get("/admin/business-search")
+async def search_businesses(q: str, user=Depends(require_super_admin)):
+    """Recherche de businesses par nom"""
+    businesses = await db.businesses.find(
+        {"name": {"$regex": q, "$options": "i"}},
+        {"_id": 0, "id": 1, "name": 1, "business_type": 1}
+    ).limit(20).to_list(20)
+    return businesses
+
 app.include_router(api_router)
 
 app.add_middleware(
