@@ -136,8 +136,8 @@ export default function AppointmentsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-2 mb-4">
-        <div className="relative flex-1">
+      <div className="flex flex-wrap gap-2 mb-4">
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             value={search}
@@ -153,6 +153,18 @@ export default function AppointmentsPage() {
           </SelectTrigger>
           <SelectContent>
             {statusOptions.map(o => (
+              <SelectItem key={o.value} value={o.value}>
+                {lang === 'fr' ? o.label_fr : o.label_en}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={sourceFilter} onValueChange={setSourceFilter}>
+          <SelectTrigger className="h-10 w-36 rounded-xl" data-testid="source-filter">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {sourceOptions.map(o => (
               <SelectItem key={o.value} value={o.value}>
                 {lang === 'fr' ? o.label_fr : o.label_en}
               </SelectItem>
