@@ -83,6 +83,7 @@ function AppRoutes() {
       <Route path="/clients" element={<ProtectedRoute roles={['business_owner']}><ClientsPage /></ProtectedRoute>} />
       <Route path="/integrations" element={<ProtectedRoute roles={['business_owner']}><IntegrationsPage /></ProtectedRoute>} />
       <Route path="/ml-scoring" element={<ProtectedRoute roles={['business_owner']}><MLScoringPage /></ProtectedRoute>} />
+      <Route path="/templates" element={<ProtectedRoute roles={['business_owner']}><TemplatesPage /></ProtectedRoute>} />
 
       {/* Super Admin */}
       <Route path="/admin" element={<ProtectedRoute roles={['super_admin']}><AdminDashboard /></ProtectedRoute>} />
