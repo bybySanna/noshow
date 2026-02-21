@@ -21,100 +21,95 @@ SaaS anti no-show permettant aux entreprises (restaurants, salons, coachs) de r�
 - Analytics et statistiques
 
 ### Phase 2 - ML Scoring & Intégrations (Complète)
-
-#### Système ML de Scoring No-Show
-- Algorithme avec 6 facteurs pondérés
+- Algorithme ML avec 6 facteurs pondérés
 - Page /ml-scoring avec distribution des risques
-- Endpoints ML pour scoring automatique
+- Import Google Calendar (simulé)
+- Templates de messages éditables (6 par défaut)
 
-#### Import Google Calendar (Simulation)
-- OAuth flow simulé pour connexion
-- Sync automatique des événements
+### Phase 3 - Notation & Fidélisation (Session 21 Fév 2025)
+- **Notation clients**: 4 critères (ponctualité, politesse, fiabilité, globale)
+- **Messages de remerciement**: Templates avec liens et variables dynamiques
+- **Chat interne Admin ↔ Business**: Messages bidirectionnels + notifications
+- **Insights Admin "2000% pertinents"**: Entreprises à risque, top performers, alertes
 
-#### Templates de Messages Éditables
-- 6 templates par défaut
-- Variables dynamiques
-- Multi-canaux: Email, SMS, WhatsApp
+### Phase 4 - Automatisation 100% (Session 21 Fév 2025) ✨ NOUVEAU
 
-### Phase 3 - Notation & Fidélisation (Session 21 Février 2025)
+#### Système d'Automatisation Post-RDV
+- **Trigger automatique**: Dès qu'un RDV passe à "completed", les messages sont envoyés **sans aucune intervention manuelle**
+- **Page /automation** avec 4 onglets:
+  - **Dashboard**: KPIs (envoyés, en attente, échecs, taux engagement)
+  - **File d'envoi**: Liste temps réel avec statuts et retry manuel
+  - **Templates**: 4 templates par défaut + création personnalisés
+  - **Paramètres**: Canal préféré, fallback, liens
 
-#### Système de Notation Clients
-- **Page /client-ratings** pour noter les clients après RDV terminés
-- **4 critères**: Ponctualité, Politesse, Fiabilité, Note globale (1-5 étoiles)
-- **Commentaires** optionnels
-- **Impact ML**: Les notes alimentent le score de risque amélioré
-- **Endpoints**:
-  - `POST /api/appointments/{id}/rate-client`
-  - `GET /api/clients/unrated-appointments`
-  - `GET /api/clients/{phone}/ratings`
-  - `GET /api/ml/enhanced-risk-score/{phone}` (avec notes)
+#### Templates Dynamiques par Défaut
+1. **Remerciement Standard**: Message simple post-visite
+2. **Demande d'Avis Google**: Avec lien vers Google Review
+3. **Récompense Fidélité**: Code promo personnalisé
+4. **Roue de la Fortune**: Lien vers jeu marketing
 
-#### Messages de Remerciement
-- **Page /thankyou** avec système de templates
-- **3 templates par défaut**:
-  - Remerciement standard
-  - Fidélité (-10% code promo)
-  - Demande d'avis
-- **Création de templates personnalisés**
-- **Support de liens** dans les messages
-- **Variables dynamiques**: {{client_name}}
-- **Envoi en masse** aux RDV terminés
-- **Historique** des messages envoyés
-- **Endpoints**:
-  - `GET /api/thankyou/templates`
-  - `POST/PUT/DELETE /api/thankyou/templates`
-  - `POST /api/thankyou/bulk-send`
-  - `GET /api/thankyou/history`
+#### Variables Dynamiques Supportées
+- `{{nom_client}}` - Nom du client
+- `{{nom_entreprise}}` - Nom de l'entreprise
+- `{{lien_google_avis}}` - Lien Google Review
+- `{{lien_roue_fortune}}` - Lien roue de la fortune
+- `{{reduction}}` - Pourcentage de réduction
+- `{{code_promo}}` - Code promo
+- `{{date_expiration}}` - Date d'expiration
 
-#### Système de Chat Interne Admin ↔ Business
-- **Page /admin/messaging** pour Super Admin
-  - Liste des conversations par entreprise
-  - Envoi de messages individuels
-  - **Message groupé** à plusieurs entreprises
-  - Recherche d'entreprises
-  - Suppression de messages
-  - Indicateur de messages non lus
-- **Page /messages** pour Business
-  - Chat avec le support NoShowGone
-  - Onglet Messages + Onglet Notifications
-  - Réponse au support
-  - Indicateur de messages non lus
-- **Notifications Business**
-  - Alertes automatiques lors de messages admin
-  - Marquer comme lu (individuel/tous)
-  - Supprimer notifications (individuel/tous)
-- **Endpoints Admin**:
-  - `GET /api/admin/conversations`
-  - `GET/POST /api/admin/conversations/{business_id}`
-  - `POST /api/admin/conversations/group`
-  - `DELETE /api/admin/conversations/{business_id}/messages/{message_id}`
-  - `GET /api/admin/business-search`
-- **Endpoints Business**:
-  - `GET/POST /api/business/messages`
-  - `GET /api/business/messages/unread-count`
-  - `GET /api/business/notifications`
-  - `PUT /api/business/notifications/{id}/read`
-  - `DELETE /api/business/notifications/{id}`
-  - `PUT /api/business/notifications/read-all`
-  - `DELETE /api/business/notifications` (clear all)
+#### Multi-Canaux avec Fallback Automatique
+- **Canal préféré**: SMS, WhatsApp, ou Email
+- **Fallback**: Si le canal échoue → essaie automatiquement le suivant
+- **Ordre**: SMS → WhatsApp → Email
+- **Retry automatique**: 3 tentatives avec backoff (1min, 5min, 15min)
 
-#### Insights Admin "2000% Pertinents"
-- **Endpoint**: `GET /api/admin/insights`
-- **Entreprises à risque**: Taux de no-show > 30%
-- **Top performers**: Meilleur taux de succès
-- **Essais expirant bientôt**: Abonnements trial <7 jours
-- **Messages non lus**: Compteur support
-- **RDV du jour**: Toutes entreprises
+#### Statuts de Messages
+| Statut | Description |
+|--------|-------------|
+| pending | En attente d'envoi |
+| sending | Envoi en cours |
+| sent | Envoyé avec succès |
+| delivered | Livré (confirmé) |
+| failed | Échec définitif |
+| retrying | En attente de retry |
+| fallback | Basculement vers autre canal |
 
-#### Dashboard Business - Actions Recommandées
-- **Clients à noter**: Badge sur lien + section d'action
-- **Clients à remercier**: Badge sur lien + section d'action
-- **Messages non lus**: Badge sur lien + section d'action
-- **Quick links** enrichis avec badges de compteurs
+#### Endpoints API Automatisation
+- `GET /api/automation/queue` - Liste la queue avec stats
+- `GET /api/automation/analytics` - Statistiques temps réel
+- `GET /api/automation/settings` - Paramètres
+- `PUT /api/automation/settings` - Mise à jour paramètres
+- `GET /api/automation/templates` - Templates
+- `POST /api/automation/templates` - Créer template
+- `POST /api/automation/retry/{id}` - Retry manuel
+- `POST /api/automation/trigger/{id}` - Trigger manuel (debug)
+- `POST /api/automation/track-click` - Tracking clics
 
-## Structure des Pages
+#### Monitoring Admin
+- `GET /api/admin/automation/analytics` - Stats globales
+- `GET /api/admin/automation/queue` - Queue globale
+- `POST /api/admin/automation/process-retries` - Traiter les retries
 
-### Business (/dashboard)
+### Phase 5 - Onboarding Enrichi (P1 Complète) ✨ NOUVEAU
+
+#### Page /setup - Configuration Guidée
+- **Barre de progression**: 7 étapes avec pourcentage
+- **5 sections configurables**:
+  1. **Profil**: Téléphone, email, adresse, site web
+  2. **Fuseau horaire**: 10 options (Europe, Amérique, Afrique, Asie)
+  3. **Horaires d'ouverture**: Lundi-Dimanche avec open/close ou fermé
+  4. **Liens marketing**: Google Review, Roue de la Fortune
+  5. **Automatisation**: Résumé et lien vers /automation
+
+#### Endpoints Onboarding
+- `GET /api/onboarding/status` - Progression (7 étapes)
+- `PUT /api/onboarding/profile` - Mise à jour profil
+- `PUT /api/onboarding/business-hours` - Horaires d'ouverture
+- `GET /api/utils/timezones` - Liste fuseaux horaires
+
+## Pages Frontend
+
+### Business
 | Route | Description |
 |-------|-------------|
 | /dashboard | KPIs, actions recommandées |
@@ -122,21 +117,23 @@ SaaS anti no-show permettant aux entreprises (restaurants, salons, coachs) de r�
 | /calendar | Vue hebdomadaire |
 | /analytics | Charts, stats |
 | /clients | Gestion clients |
-| /client-ratings | Notation clients après RDV |
+| /client-ratings | Notation clients |
 | /thankyou | Messages de remerciement |
+| /automation | **NOUVEAU** Dashboard automatisation |
 | /ml-scoring | Scoring prédictif ML |
 | /clients-risk | Blacklist, alertes |
 | /notifications | Historique notifs |
-| /messages | Chat avec support + notifications |
+| /messages | Chat support + notifications |
 | /templates | Édition messages |
 | /integrations | Google Cal, APIs |
 | /staff | Équipe |
+| /setup | **NOUVEAU** Onboarding enrichi |
 | /settings | Paramètres |
 
-### Admin (/admin)
+### Admin
 | Route | Description |
 |-------|-------------|
-| /admin | Dashboard + Insights pertinents |
+| /admin | Dashboard + Insights |
 | /admin/businesses | Gestion entreprises |
 | /admin/messaging | Chat avec entreprises |
 | /admin/plans | CRUD plans |
@@ -144,72 +141,123 @@ SaaS anti no-show permettant aux entreprises (restaurants, salons, coachs) de r�
 | /admin/activity | Logs activité |
 | /admin/stats | Analytics plateforme |
 
-## Backlog P0 (Clés API requises)
+## Schéma DB Mis à Jour
+
+### Collection: post_rdv_queue (NOUVEAU)
+```json
+{
+  "id": "uuid",
+  "appointment_id": "uuid",
+  "business_id": "uuid",
+  "client_name": "string",
+  "client_phone": "string",
+  "client_email": "string",
+  "template_key": "string",
+  "message_type": "thankyou|review_request|loyalty_reward|wheel_of_fortune",
+  "message": "string (final message with variables replaced)",
+  "channel": "sms|whatsapp|email",
+  "fallback_channels": ["whatsapp", "email"],
+  "status": "pending|sending|sent|failed|retrying|fallback",
+  "retry_count": 0,
+  "click_tracking": {
+    "google_review_clicked": false,
+    "wheel_clicked": false
+  },
+  "simulation_mode": true,
+  "created_at": "ISO date",
+  "sent_at": "ISO date"
+}
+```
+
+### Collection: post_rdv_templates (NOUVEAU)
+```json
+{
+  "id": "uuid",
+  "business_id": "uuid",
+  "key": "custom_xxx",
+  "name": "string",
+  "type": "thankyou|review_request|...",
+  "message_fr": "string with {{variables}}",
+  "message_en": "string with {{variables}}",
+  "channels": ["sms", "email"],
+  "include_link": true,
+  "is_default": false
+}
+```
+
+### Champ ajouté à businesses
+```json
+{
+  "post_rdv_settings": {
+    "enabled": true,
+    "enabled_templates": ["thankyou_standard", "review_request"],
+    "preferred_channel": "sms",
+    "fallback_enabled": true,
+    "google_review_link": "https://g.page/...",
+    "wheel_of_fortune_link": "https://...",
+    "loyalty_discount": "10",
+    "promo_code": "MERCI10"
+  },
+  "settings": {
+    "timezone": "Europe/Paris",
+    "opening_hours": {
+      "monday": { "open": "09:00", "close": "18:00", "closed": false },
+      "tuesday": { "open": "09:00", "close": "18:00", "closed": false },
+      ...
+    }
+  }
+}
+```
+
+## Backlog
+
+### P0 (Clés API requises)
+- [ ] Intégration Twilio réelle (SMS/WhatsApp)
+- [ ] Intégration SMTP réelle (Email)
 - [ ] Intégration Stripe réelle
-- [ ] Intégration Twilio réelle
-- [ ] OAuth Google réel
 
-## Backlog P1 (Prêt à implémenter)
-- [ ] Multi-canaux fallback (SMS → Email si échec)
-- [ ] Onboarding enrichi (fuseau horaire, horaires)
-- [ ] Widget "Argent économisé" landing page
-- [ ] Rapports PDF exportables
+### P1 (Prêt)
+- [x] ~~Multi-canal fallback~~ ✅ FAIT
+- [x] ~~Onboarding enrichi~~ ✅ FAIT
+- [ ] Worker background pour retry automatique (cron job)
+- [ ] Heures calmes (ne pas envoyer la nuit)
 
-## Backlog P2 (Futur)
+### P2 (Futur)
+- [ ] Tracking des ouvertures d'email
+- [ ] Statistiques de conversion
 - [ ] Outlook / iCal intégration
 - [ ] App mobile native
-- [ ] Scoring ML avancé avec apprentissage
 
 ## Comptes Démo
 - **Admin**: admin@noshow.com / admin123456
 - **Business**: demo@bellanapoli.com / demo123456
 
 ## Services en Mode Simulation
-- **NotificationService**: Queue, retry, logs (prêt pour Twilio)
-- **StripeService**: Abonnements, dépôts (prêt pour Stripe)
-- **CalendarIntegrationService**: Google OAuth (prêt pour vraies clés)
-- **MLScoringService**: Algorithme de prédiction amélioré avec notes
-- **ThankYouService**: Templates et envoi (simulé)
-- **InternalChatService**: Messages admin ↔ business (fonctionnel)
+- **PostRdvAutomationService**: Messages dans la queue, envoi simulé
+- **NotificationService**: Rappels simulés
+- **StripeService**: Paiements simulés
+- **CalendarIntegrationService**: Google OAuth simulé
+- **MLScoringService**: Algorithme heuristique (pas de ML réel)
 
-## Structure Code
-```
-/app/
-├── backend/
-│   ├── server.py
-│   └── services/
-│       ├── ml_scoring_service.py
-│       ├── calendar_integration_service.py
-│       ├── template_service.py
-│       ├── notification_service.py
-│       └── stripe_service.py
-├── frontend/
-│   └── src/
-│       ├── pages/
-│       │   ├── business/
-│       │   │   ├── ClientRatingsPage.js (NEW)
-│       │   │   ├── ThankYouPage.js (NEW)
-│       │   │   ├── BusinessMessagesPage.js (NEW)
-│       │   │   ├── MLScoringPage.js
-│       │   │   └── ...
-│       │   └── admin/
-│       │       ├── AdminMessaging.js (NEW)
-│       │       └── AdminDashboard.js (enhanced)
-│       └── components/
-│           ├── BusinessLayout.js (updated nav)
-│           └── AdminLayout.js (updated nav)
-└── memory/
-    └── PRD.md
-```
+## Tests Passés
+- **Backend**: 21/21 tests (iteration 5)
+- **Frontend**: 100% pages vérifiées
+- **Trigger auto**: ✅ Vérifié - RDV completed → message en queue → envoyé
 
 ## Changelog
 
-### 21 Février 2025
-- Système de notation clients (4 critères)
-- Messages de remerciement avec templates
-- Chat interne Admin ↔ Business bidirectionnel
-- Notifications business avec suppression
-- ML scoring amélioré avec notes clients
+### 21 Février 2025 (Session 2)
+- **Automatisation 100%**: Trigger automatique post-RDV
+- **4 templates** par défaut avec variables dynamiques
+- **Multi-canaux** avec fallback automatique
+- **Retry automatique** avec backoff exponentiel
+- **Page /automation**: Dashboard, queue, templates, settings
+- **Page /setup**: Onboarding enrichi (timezone, horaires)
+- **21/21 tests** backend passés
+
+### 21 Février 2025 (Session 1)
+- Système de notation clients
+- Messages de remerciement
+- Chat interne Admin ↔ Business
 - Insights admin "2000% pertinents"
-- Dashboard business avec actions recommandées
-- Tests: 28/28 backend, 100% frontend
+- 28/28 tests backend passés
