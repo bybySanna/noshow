@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Gift, Settings, Users, BarChart2, Play, Pause, Plus, Trash2, Save, ExternalLink, Copy, Check, Palette, Percent, Clock } from 'lucide-react';
+import { Gift, Settings, Users, BarChart2, Play, Plus, Trash2, Save, ExternalLink, Copy, Check, Percent, Clock, Link, QrCode, FileText, Instagram, Facebook, MessageCircle, Star, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { useLang } from '../../context/LangContext';
 import BusinessLayout from '../../components/BusinessLayout';
 import axios from 'axios';
 import { API } from '../../context/AuthContext';
 import { toast } from 'sonner';
+import QRCode from 'react-qr-code';
 
 // Composant de roue visuelle
 const WheelPreview = ({ segments, spinning }) => {
