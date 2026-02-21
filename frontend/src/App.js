@@ -72,6 +72,7 @@ function AppRoutes() {
       {/* Public */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/confirm/:token" element={<ConfirmPage />} />
+      <Route path="/play/:code" element={<PublicWheelPage />} />
 
       {/* Auth */}
       <Route path="/login" element={<RedirectIfAuth><LoginPage /></RedirectIfAuth>} />
