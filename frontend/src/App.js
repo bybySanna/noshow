@@ -25,6 +25,7 @@ import ThankYouPage from './pages/business/ThankYouPage';
 import BusinessMessagesPage from './pages/business/BusinessMessagesPage';
 import AutomationPage from './pages/business/AutomationPage';
 import BusinessOnboardingPage from './pages/business/OnboardingPage';
+import CreditsPage from './pages/business/CreditsPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminBusinesses from './pages/admin/AdminBusinesses';
 import AdminPlans from './pages/admin/AdminPlans';
@@ -95,6 +96,7 @@ function AppRoutes() {
       <Route path="/messages" element={<ProtectedRoute roles={['business_owner']}><BusinessMessagesPage /></ProtectedRoute>} />
       <Route path="/automation" element={<ProtectedRoute roles={['business_owner']}><AutomationPage /></ProtectedRoute>} />
       <Route path="/setup" element={<ProtectedRoute roles={['business_owner']}><BusinessOnboardingPage /></ProtectedRoute>} />
+      <Route path="/credits" element={<ProtectedRoute roles={['business_owner']}><CreditsPage /></ProtectedRoute>} />
 
       {/* Super Admin */}
       <Route path="/admin" element={<ProtectedRoute roles={['super_admin']}><AdminDashboard /></ProtectedRoute>} />
