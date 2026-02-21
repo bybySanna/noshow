@@ -1725,6 +1725,194 @@ async def get_all_plans(user=Depends(get_current_user)):
     
     return plans
 
+# ============= NOTIFICATION TEMPLATES =============
+@api_router.get("/templates")
+async def get_templates(user=Depends(get_current_user)):
+    """Liste les templates de notifications"""
+    from services.template_service import TemplateService
+    
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    service = TemplateService(db)
+    templates = await service.get_templates(business_id)
+    return templates
+
+@api_router.get("/templates/variables")
+async def get_template_variables():
+    """Liste les variables disponibles pour les templates"""
+    from services.template_service import TemplateService
+    
+    service = TemplateService(db)
+    return service.get_available_variables()
+
+@api_router.get("/templates/{template_id}")
+async def get_template(template_id: str, user=Depends(get_current_user)):
+    """Récupère un template spécifique"""
+    from services.template_service import TemplateService
+    
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    service = TemplateService(db)
+    template = await service.get_template(business_id, template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return template
+
+@api_router.put("/templates/{template_id}")
+async def save_template(template_id: str, data: dict, user=Depends(get_current_user)):
+    """Sauvegarde un template"""
+    from services.template_service import TemplateService
+    
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    service = TemplateService(db)
+    template = await service.save_template(business_id, template_id, data)
+    return template
+
+@api_router.post("/templates")
+async def create_template(data: dict, user=Depends(get_current_user)):
+    """Crée un nouveau template personnalisé"""
+    from services.template_service import TemplateService
+    
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    service = TemplateService(db)
+    template = await service.create_custom_template(business_id, data)
+    return template
+
+@api_router.delete("/templates/{template_id}")
+async def delete_template(template_id: str, user=Depends(get_current_user)):
+    """Supprime ou reset un template"""
+    from services.template_service import TemplateService
+    
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    service = TemplateService(db)
+    result = await service.delete_template(business_id, template_id)
+    return result
+
+@api_router.post("/templates/{template_id}/reset")
+async def reset_template(template_id: str, user=Depends(get_current_user)):
+    """Remet un template à sa valeur par défaut"""
+    from services.template_service import TemplateService
+    
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    service = TemplateService(db)
+    result = await service.reset_template(business_id, template_id)
+    return result
+
+@api_router.get("/templates/{template_id}/preview")
+async def preview_template(template_id: str, lang: str = "fr", user=Depends(get_current_user)):
+    """Prévisualise un template"""
+    from services.template_service import TemplateService
+    
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    service = TemplateService(db)
+    preview = await service.preview_template(business_id, template_id, lang)
+    return preview
+
+# ============= NOTIFICATION LOGS =============
+@api_router.get("/notification-logs")
+async def get_notification_logs(limit: int = 50, user=Depends(get_current_user)):
+    """Liste les logs de notifications avec fallback"""
+    from services.template_service import NotificationFallbackService
+    
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    service = NotificationFallbackService(db)
+    logs = await service.get_notification_logs(business_id, limit)
+    return logs
+
+@api_router.post("/notification-logs/{notification_id}/retry")
+async def retry_notification(notification_id: str, user=Depends(get_current_user)):
+    """Retente l'envoi d'une notification"""
+    from services.template_service import NotificationFallbackService
+    
+    service = NotificationFallbackService(db)
+    result = await service.retry_notification(notification_id)
+    return result
+
+# ============= ONBOARDING CONFIG =============
+@api_router.get("/business/onboarding-status")
+async def get_onboarding_status(user=Depends(get_current_user)):
+    """Vérifie l'état de l'onboarding"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    business = await db.businesses.find_one({"id": business_id}, {"_id": 0})
+    if not business:
+        raise HTTPException(status_code=404, detail="Business not found")
+    
+    settings = business.get("settings", {})
+    
+    steps = {
+        "basic_info": bool(business.get("name") and business.get("industry")),
+        "contact_info": bool(business.get("phone") or business.get("email")),
+        "address": bool(business.get("address")),
+        "opening_hours": bool(settings.get("opening_hours")),
+        "timezone": bool(settings.get("timezone")),
+        "reminders_configured": bool(settings.get("reminders")),
+        "first_appointment": await db.appointments.count_documents({"business_id": business_id}) > 0
+    }
+    
+    completed = sum(1 for v in steps.values() if v)
+    total = len(steps)
+    
+    return {
+        "steps": steps,
+        "completed": completed,
+        "total": total,
+        "progress": round(completed / total * 100),
+        "is_complete": completed == total
+    }
+
+@api_router.put("/business/settings/hours")
+async def update_opening_hours(data: dict, user=Depends(get_current_user)):
+    """Met à jour les horaires d'ouverture"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    await db.businesses.update_one(
+        {"id": business_id},
+        {"$set": {"settings.opening_hours": data.get("hours", {})}}
+    )
+    
+    return {"success": True}
+
+@api_router.put("/business/settings/timezone")
+async def update_timezone(data: dict, user=Depends(get_current_user)):
+    """Met à jour le fuseau horaire"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    await db.businesses.update_one(
+        {"id": business_id},
+        {"$set": {"settings.timezone": data.get("timezone", "Europe/Paris")}}
+    )
+    
+    return {"success": True}
+
 app.include_router(api_router)
 
 app.add_middleware(
