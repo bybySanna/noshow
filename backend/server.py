@@ -3383,14 +3383,17 @@ async def get_wheel_stats(user=Depends(get_current_user)):
 
 @api_router.get("/wheel/{business_id}/public")
 async def get_public_wheel(business_id: str):
-    """Récupère la roue publiquement (pour les clients)"""
+    """Récupère la roue publiquement (pour les clients) - par business_id ou unique_code"""
+    # Chercher par business_id ou unique_code
     config = await db.wheel_configs.find_one(
-        {"business_id": business_id, "enabled": True},
+        {"$or": [{"business_id": business_id}, {"unique_code": business_id}], "enabled": True},
         {"_id": 0}
     )
     
     if not config:
         raise HTTPException(status_code=404, detail="Roue non disponible")
+    
+    actual_business_id = config.get("business_id")
     
     # Ne pas exposer les probabilités exactes
     safe_segments = []
@@ -3400,15 +3403,125 @@ async def get_public_wheel(business_id: str):
             "color": seg.get("color")
         })
     
-    biz = await db.businesses.find_one({"id": business_id}, {"_id": 0, "name": 1, "logo_url": 1})
+    biz = await db.businesses.find_one({"id": actual_business_id}, {"_id": 0, "name": 1, "logo_url": 1})
     
     return {
+        "business_id": actual_business_id,
         "title": config.get("title"),
         "subtitle": config.get("subtitle"),
         "segments": safe_segments,
-        "tasks_required": config.get("tasks_required"),
+        "actions": config.get("actions", []),
+        "social_links": config.get("social_links", {}),
+        "google_review_link": config.get("google_review_link", ""),
+        "cgv_text": config.get("cgv_text", ""),
+        "rules_text": config.get("rules_text", ""),
+        "require_gdpr": config.get("require_gdpr", True),
         "business_name": biz.get("name") if biz else "",
         "logo_url": biz.get("logo_url") if biz else None
+    }
+
+@api_router.post("/wheel/{business_id}/play")
+async def play_wheel(business_id: str, data: dict):
+    """Fait tourner la roue (page publique avec validations complètes)"""
+    client_phone = data.get("phone", "").strip()
+    client_email = data.get("email", "").strip().lower()
+    client_name = data.get("name", "").strip()
+    gdpr_accepted = data.get("gdpr_accepted", False)
+    actions_completed = data.get("actions_completed", [])
+    
+    if not client_phone or not client_email:
+        raise HTTPException(status_code=400, detail="Téléphone et email requis")
+    
+    # Chercher config par business_id ou unique_code
+    config = await db.wheel_configs.find_one(
+        {"$or": [{"business_id": business_id}, {"unique_code": business_id}], "enabled": True},
+        {"_id": 0}
+    )
+    
+    if not config:
+        raise HTTPException(status_code=404, detail="Roue non disponible")
+    
+    actual_business_id = config.get("business_id")
+    
+    # Vérifier RGPD
+    if config.get("require_gdpr", True) and not gdpr_accepted:
+        raise HTTPException(status_code=400, detail="Vous devez accepter les CGV et la politique RGPD")
+    
+    # Vérifier si actions requises sont complétées
+    required_actions = config.get("actions", [])
+    if required_actions:
+        for action in required_actions:
+            if action.get("required", False) and action.get("key") not in actions_completed:
+                raise HTTPException(status_code=400, detail=f"Action requise non complétée: {action.get('label', '')}")
+    
+    # Vérifier si déjà joué aujourd'hui avec ce téléphone ou email
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    
+    existing_today = await db.wheel_spins.find_one({
+        "business_id": actual_business_id,
+        "$or": [
+            {"client_phone": client_phone},
+            {"client_email": client_email}
+        ],
+        "created_at": {"$gte": today_start}
+    })
+    
+    if existing_today:
+        raise HTTPException(status_code=400, detail="Vous avez déjà joué aujourd'hui. Revenez demain !")
+    
+    # Vérifier nombre total de tours (historique complet)
+    spins_count = await db.wheel_spins.count_documents({
+        "business_id": actual_business_id,
+        "$or": [{"client_phone": client_phone}, {"client_email": client_email}]
+    })
+    
+    max_spins = config.get("max_spins_per_client", 1)
+    if spins_count >= max_spins:
+        raise HTTPException(status_code=400, detail="Vous avez atteint le nombre maximum de participations")
+    
+    # Calculer le résultat (pondéré par probabilité)
+    import random
+    segments = config.get("segments", [])
+    total = sum(s.get("probability", 1) for s in segments)
+    rand = random.random() * total
+    
+    winner = segments[0] if segments else {"label": "Rien", "promo_code": ""}
+    for seg in segments:
+        rand -= seg.get("probability", 1)
+        if rand <= 0:
+            winner = seg
+            break
+    
+    # Générer un code de validation unique
+    validation_code = f"WIN-{str(uuid.uuid4())[:8].upper()}"
+    
+    # Enregistrer le tour
+    expiry_date = (datetime.now(timezone.utc) + timedelta(days=config.get("expiry_days", 30))).isoformat()
+    
+    spin = {
+        "id": str(uuid.uuid4()),
+        "business_id": actual_business_id,
+        "client_name": client_name,
+        "client_phone": client_phone,
+        "client_email": client_email,
+        "prize_label": winner.get("label"),
+        "promo_code": winner.get("promo_code", ""),
+        "validation_code": validation_code,
+        "expiry_date": expiry_date,
+        "status": "pending",  # pending, validated, expired
+        "redeemed": False,
+        "actions_completed": actions_completed,
+        "gdpr_accepted": gdpr_accepted,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.wheel_spins.insert_one(spin)
+    
+    return {
+        "success": True,
+        "prize": winner.get("label"),
+        "validation_code": validation_code,
+        "expiry_date": expiry_date,
+        "message": f"Félicitations ! Vous avez gagné : {winner.get('label')}. Présentez votre code à l'établissement."
     }
 
 @api_router.post("/wheel/{business_id}/spin")
