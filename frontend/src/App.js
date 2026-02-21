@@ -14,8 +14,13 @@ import StaffPage from './pages/business/StaffPage';
 import SettingsPage from './pages/business/SettingsPage';
 import AnalyticsPage from './pages/business/AnalyticsPage';
 import NotificationsPage from './pages/business/NotificationsPage';
+import ClientsRiskPage from './pages/business/ClientsRiskPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminBusinesses from './pages/admin/AdminBusinesses';
+import AdminPlans from './pages/admin/AdminPlans';
+import AdminUsers from './pages/admin/AdminUsers';
+import AdminActivity from './pages/admin/AdminActivity';
+import AdminStats from './pages/admin/AdminStats';
 import StaffDashboard from './pages/staff/StaffDashboard';
 import ConfirmPage from './pages/public/ConfirmPage';
 import './App.css';
@@ -40,7 +45,7 @@ const RedirectIfAuth = ({ children }) => {
   if (loading) return null;
   if (user) {
     if (user.role === 'super_admin') return <Navigate to="/admin" replace />;
-    if (user.role === 'staff') return <Navigate to="/staff" replace />;
+    if (user.role === 'staff') return <Navigate to="/staff-dashboard" replace />;
     if (!user.business_id) return <Navigate to="/onboarding" replace />;
     return <Navigate to="/dashboard" replace />;
   }
@@ -59,62 +64,27 @@ function AppRoutes() {
       <Route path="/register" element={<RedirectIfAuth><RegisterPage /></RedirectIfAuth>} />
 
       {/* Onboarding */}
-      <Route path="/onboarding" element={
-        <ProtectedRoute roles={['business_owner']}>
-          <OnboardingPage />
-        </ProtectedRoute>
-      } />
+      <Route path="/onboarding" element={<ProtectedRoute roles={['business_owner']}><OnboardingPage /></ProtectedRoute>} />
 
-      {/* Business Dashboard */}
-      <Route path="/dashboard" element={
-        <ProtectedRoute roles={['business_owner']}>
-          <BusinessDashboard />
-        </ProtectedRoute>
-      } />
-      <Route path="/appointments" element={
-        <ProtectedRoute roles={['business_owner']}>
-          <AppointmentsPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/staff" element={
-        <ProtectedRoute roles={['business_owner']}>
-          <StaffPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/settings" element={
-        <ProtectedRoute roles={['business_owner']}>
-          <SettingsPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/analytics" element={
-        <ProtectedRoute roles={['business_owner']}>
-          <AnalyticsPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/notifications" element={
-        <ProtectedRoute roles={['business_owner']}>
-          <NotificationsPage />
-        </ProtectedRoute>
-      } />
+      {/* Business */}
+      <Route path="/dashboard" element={<ProtectedRoute roles={['business_owner']}><BusinessDashboard /></ProtectedRoute>} />
+      <Route path="/appointments" element={<ProtectedRoute roles={['business_owner']}><AppointmentsPage /></ProtectedRoute>} />
+      <Route path="/staff" element={<ProtectedRoute roles={['business_owner']}><StaffPage /></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute roles={['business_owner']}><SettingsPage /></ProtectedRoute>} />
+      <Route path="/analytics" element={<ProtectedRoute roles={['business_owner']}><AnalyticsPage /></ProtectedRoute>} />
+      <Route path="/notifications" element={<ProtectedRoute roles={['business_owner']}><NotificationsPage /></ProtectedRoute>} />
+      <Route path="/clients-risk" element={<ProtectedRoute roles={['business_owner']}><ClientsRiskPage /></ProtectedRoute>} />
 
       {/* Super Admin */}
-      <Route path="/admin" element={
-        <ProtectedRoute roles={['super_admin']}>
-          <AdminDashboard />
-        </ProtectedRoute>
-      } />
-      <Route path="/admin/businesses" element={
-        <ProtectedRoute roles={['super_admin']}>
-          <AdminBusinesses />
-        </ProtectedRoute>
-      } />
+      <Route path="/admin" element={<ProtectedRoute roles={['super_admin']}><AdminDashboard /></ProtectedRoute>} />
+      <Route path="/admin/businesses" element={<ProtectedRoute roles={['super_admin']}><AdminBusinesses /></ProtectedRoute>} />
+      <Route path="/admin/plans" element={<ProtectedRoute roles={['super_admin']}><AdminPlans /></ProtectedRoute>} />
+      <Route path="/admin/users" element={<ProtectedRoute roles={['super_admin']}><AdminUsers /></ProtectedRoute>} />
+      <Route path="/admin/activity" element={<ProtectedRoute roles={['super_admin']}><AdminActivity /></ProtectedRoute>} />
+      <Route path="/admin/stats" element={<ProtectedRoute roles={['super_admin']}><AdminStats /></ProtectedRoute>} />
 
       {/* Staff */}
-      <Route path="/staff-dashboard" element={
-        <ProtectedRoute roles={['staff']}>
-          <StaffDashboard />
-        </ProtectedRoute>
-      } />
+      <Route path="/staff-dashboard" element={<ProtectedRoute roles={['staff']}><StaffDashboard /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
