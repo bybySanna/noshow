@@ -3359,8 +3359,9 @@ async def update_wheel_config(data: dict, user=Depends(get_current_user)):
     await db.businesses.update_one(
         {"id": business_id},
         {"$set": {"post_rdv_settings.wheel_of_fortune_link": wheel_link}}
+    )
     
-    return {"success": True}
+    return {"success": True, "unique_code": unique_code, "wheel_url": wheel_link}
 
 @api_router.get("/wheel/stats")
 async def get_wheel_stats(user=Depends(get_current_user)):
