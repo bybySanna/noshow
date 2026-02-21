@@ -3286,6 +3286,221 @@ async def get_credits_history(user=Depends(get_current_user), limit: int = 50):
     
     return {"usage_logs": logs, "purchases": purchases}
 
+# ============= WHEEL OF FORTUNE =============
+@api_router.get("/wheel/config")
+async def get_wheel_config(user=Depends(get_current_user)):
+    """Récupère la configuration de la roue de fortune"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    config = await db.wheel_configs.find_one({"business_id": business_id}, {"_id": 0})
+    
+    if not config:
+        # Config par défaut
+        return {
+            "enabled": False,
+            "title": "Roue de la Fortune",
+            "subtitle": "Tentez votre chance !",
+            "segments": [
+                {"label": "-10%", "probability": 30, "color": "#10B981", "promo_code": "ROUE10"},
+                {"label": "-20%", "probability": 15, "color": "#3B82F6", "promo_code": "ROUE20"},
+                {"label": "Cadeau", "probability": 10, "color": "#F59E0B", "promo_code": "GIFT"},
+                {"label": "-5%", "probability": 45, "color": "#8B5CF6", "promo_code": "ROUE5"},
+            ],
+            "tasks_required": ["google_review"],
+            "expiry_days": 30,
+            "max_spins_per_client": 1
+        }
+    
+    return config
+
+@api_router.put("/wheel/config")
+async def update_wheel_config(data: dict, user=Depends(get_current_user)):
+    """Met à jour la configuration de la roue"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    config = {
+        "business_id": business_id,
+        "enabled": data.get("enabled", False),
+        "title": data.get("title", "Roue de la Fortune"),
+        "subtitle": data.get("subtitle", "Tentez votre chance !"),
+        "segments": data.get("segments", []),
+        "tasks_required": data.get("tasks_required", ["google_review"]),
+        "expiry_days": data.get("expiry_days", 30),
+        "max_spins_per_client": data.get("max_spins_per_client", 1),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.wheel_configs.update_one(
+        {"business_id": business_id},
+        {"$set": config},
+        upsert=True
+    )
+    
+    # Mettre à jour le lien dans les settings post-RDV
+    biz = await db.businesses.find_one({"id": business_id}, {"_id": 0})
+    wheel_link = f"https://{os.environ.get('DOMAIN', 'noshowgone.com')}/wheel/{business_id}"
+    await db.businesses.update_one(
+        {"id": business_id},
+        {"$set": {"post_rdv_settings.wheel_of_fortune_link": wheel_link}}
+    )
+    
+    return {"success": True}
+
+@api_router.get("/wheel/stats")
+async def get_wheel_stats(user=Depends(get_current_user)):
+    """Statistiques de la roue de fortune"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    total_spins = await db.wheel_spins.count_documents({"business_id": business_id})
+    redemptions = await db.wheel_spins.count_documents({"business_id": business_id, "redeemed": True})
+    
+    conversion_rate = round(redemptions / total_spins * 100, 1) if total_spins > 0 else 0
+    
+    return {
+        "total_spins": total_spins,
+        "redemptions": redemptions,
+        "conversion_rate": conversion_rate
+    }
+
+@api_router.get("/wheel/{business_id}/public")
+async def get_public_wheel(business_id: str):
+    """Récupère la roue publiquement (pour les clients)"""
+    config = await db.wheel_configs.find_one(
+        {"business_id": business_id, "enabled": True},
+        {"_id": 0}
+    )
+    
+    if not config:
+        raise HTTPException(status_code=404, detail="Roue non disponible")
+    
+    # Ne pas exposer les probabilités exactes
+    safe_segments = []
+    for seg in config.get("segments", []):
+        safe_segments.append({
+            "label": seg.get("label"),
+            "color": seg.get("color")
+        })
+    
+    biz = await db.businesses.find_one({"id": business_id}, {"_id": 0, "name": 1, "logo_url": 1})
+    
+    return {
+        "title": config.get("title"),
+        "subtitle": config.get("subtitle"),
+        "segments": safe_segments,
+        "tasks_required": config.get("tasks_required"),
+        "business_name": biz.get("name") if biz else "",
+        "logo_url": biz.get("logo_url") if biz else None
+    }
+
+@api_router.post("/wheel/{business_id}/spin")
+async def spin_wheel(business_id: str, data: dict):
+    """Fait tourner la roue (pour les clients)"""
+    client_phone = data.get("client_phone")
+    client_email = data.get("client_email")
+    task_completed = data.get("task_completed", False)
+    
+    if not client_phone and not client_email:
+        raise HTTPException(status_code=400, detail="Téléphone ou email requis")
+    
+    config = await db.wheel_configs.find_one(
+        {"business_id": business_id, "enabled": True},
+        {"_id": 0}
+    )
+    
+    if not config:
+        raise HTTPException(status_code=404, detail="Roue non disponible")
+    
+    # Vérifier nombre de tours
+    identifier = client_phone or client_email
+    spins_count = await db.wheel_spins.count_documents({
+        "business_id": business_id,
+        "$or": [{"client_phone": identifier}, {"client_email": identifier}]
+    })
+    
+    max_spins = config.get("max_spins_per_client", 1)
+    if spins_count >= max_spins:
+        raise HTTPException(status_code=400, detail="Nombre maximum de tours atteint")
+    
+    # Vérifier la tâche requise
+    tasks_required = config.get("tasks_required", [])
+    if tasks_required and "none" not in tasks_required and not task_completed:
+        raise HTTPException(status_code=400, detail="Veuillez compléter la tâche requise")
+    
+    # Calculer le résultat (pondéré par probabilité)
+    segments = config.get("segments", [])
+    total = sum(s.get("probability", 1) for s in segments)
+    rand = __import__('random').random() * total
+    
+    winner = segments[0] if segments else {"label": "Rien", "promo_code": ""}
+    for seg in segments:
+        rand -= seg.get("probability", 1)
+        if rand <= 0:
+            winner = seg
+            break
+    
+    # Enregistrer le tour
+    expiry_date = (datetime.now(timezone.utc) + timedelta(days=config.get("expiry_days", 30))).isoformat()
+    
+    spin = {
+        "id": str(uuid.uuid4()),
+        "business_id": business_id,
+        "client_phone": client_phone,
+        "client_email": client_email,
+        "prize_label": winner.get("label"),
+        "promo_code": winner.get("promo_code", ""),
+        "expiry_date": expiry_date,
+        "redeemed": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.wheel_spins.insert_one(spin)
+    
+    return {
+        "prize": winner.get("label"),
+        "promo_code": winner.get("promo_code", ""),
+        "expiry_date": expiry_date,
+        "message": f"Félicitations ! Vous avez gagné : {winner.get('label')}"
+    }
+
+@api_router.post("/wheel/redeem")
+async def redeem_wheel_prize(data: dict, user=Depends(get_current_user)):
+    """Marque un gain de roue comme utilisé"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    promo_code = data.get("promo_code")
+    spin_id = data.get("spin_id")
+    
+    query = {"business_id": business_id, "redeemed": False}
+    if spin_id:
+        query["id"] = spin_id
+    elif promo_code:
+        query["promo_code"] = promo_code
+    else:
+        raise HTTPException(status_code=400, detail="spin_id ou promo_code requis")
+    
+    spin = await db.wheel_spins.find_one(query, {"_id": 0})
+    if not spin:
+        raise HTTPException(status_code=404, detail="Gain non trouvé ou déjà utilisé")
+    
+    # Vérifier expiration
+    expiry = datetime.fromisoformat(spin["expiry_date"].replace("Z", "+00:00"))
+    if datetime.now(timezone.utc) > expiry:
+        raise HTTPException(status_code=400, detail="Ce gain a expiré")
+    
+    await db.wheel_spins.update_one(
+        {"id": spin["id"]},
+        {"$set": {"redeemed": True, "redeemed_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"success": True, "prize": spin["prize_label"]}
+
 # ============= EMAIL SERVICE =============
 @api_router.post("/email/send")
 async def send_email(data: dict, user=Depends(get_current_user)):
