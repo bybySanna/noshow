@@ -1491,6 +1491,274 @@ async def admin_system_health(user=Depends(require_super_admin)):
 async def root():
     return {"message": "NoShowGone API v1.0", "status": "healthy"}
 
+# ============= ML SCORING =============
+@api_router.get("/ml/risk-score/{phone}")
+async def get_client_risk_score(phone: str, user=Depends(get_current_user), date: str = None, time: str = None):
+    """Calcule le score de risque ML d'un client"""
+    from services.ml_scoring_service import MLScoringService
+    
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    scoring_service = MLScoringService(db)
+    score = await scoring_service.calculate_client_risk_score(phone, business_id, date, time)
+    return score
+
+@api_router.get("/ml/risk-overview")
+async def get_risk_overview(user=Depends(get_current_user)):
+    """Vue d'ensemble des risques pour une entreprise"""
+    from services.ml_scoring_service import MLScoringService
+    
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    scoring_service = MLScoringService(db)
+    overview = await scoring_service.get_business_risk_overview(business_id)
+    return overview
+
+@api_router.post("/ml/score-appointment/{appointment_id}")
+async def score_appointment(appointment_id: str, user=Depends(get_current_user)):
+    """Calcule le score pour un RDV spécifique"""
+    from services.ml_scoring_service import MLScoringService
+    
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    # Récupérer le RDV
+    appt = await db.appointments.find_one({"id": appointment_id, "business_id": business_id}, {"_id": 0})
+    if not appt:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    scoring_service = MLScoringService(db)
+    score = await scoring_service.calculate_client_risk_score(
+        appt.get("client_phone", ""),
+        business_id,
+        appt.get("date"),
+        appt.get("time")
+    )
+    
+    # Mettre à jour le RDV avec le score
+    await db.appointments.update_one(
+        {"id": appointment_id},
+        {"$set": {"risk_score": score.get("score"), "risk_level": score.get("risk_level")}}
+    )
+    
+    return score
+
+# ============= CALENDAR INTEGRATION =============
+@api_router.get("/calendar/connections")
+async def get_calendar_connections(user=Depends(get_current_user)):
+    """Liste les connexions calendrier"""
+    from services.calendar_integration_service import CalendarIntegrationService
+    
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    service = CalendarIntegrationService(db)
+    connections = await service.get_calendar_connections(business_id)
+    return connections
+
+@api_router.get("/calendar/google/auth-url")
+async def get_google_auth_url(user=Depends(get_current_user)):
+    """Obtient l'URL d'authentification Google"""
+    from services.calendar_integration_service import CalendarIntegrationService
+    
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    service = CalendarIntegrationService(db)
+    url = service.get_google_auth_url(business_id)
+    return {"auth_url": url}
+
+@api_router.get("/calendar/google/callback")
+async def google_calendar_callback(code: str = None, state: str = None, business_id: str = None):
+    """Callback OAuth Google"""
+    from services.calendar_integration_service import CalendarIntegrationService
+    
+    biz_id = state or business_id
+    if not biz_id:
+        raise HTTPException(status_code=400, detail="Missing business_id")
+    
+    service = CalendarIntegrationService(db)
+    result = await service.handle_google_callback(code or "simulate", biz_id)
+    return result
+
+@api_router.get("/calendar/google/callback-simulate")
+async def google_calendar_callback_simulate(business_id: str):
+    """Callback OAuth Google (simulation)"""
+    from services.calendar_integration_service import CalendarIntegrationService
+    
+    service = CalendarIntegrationService(db)
+    result = await service.handle_google_callback("simulate", business_id)
+    return result
+
+@api_router.post("/calendar/google/sync")
+async def sync_google_calendar(user=Depends(get_current_user)):
+    """Synchronise Google Calendar"""
+    from services.calendar_integration_service import CalendarIntegrationService
+    
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    service = CalendarIntegrationService(db)
+    result = await service.sync_google_calendar(business_id)
+    return result
+
+@api_router.delete("/calendar/{provider}/disconnect")
+async def disconnect_calendar(provider: str, user=Depends(get_current_user)):
+    """Déconnecte un calendrier"""
+    from services.calendar_integration_service import CalendarIntegrationService
+    
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    service = CalendarIntegrationService(db)
+    result = await service.disconnect_calendar(business_id, provider)
+    return result
+
+# ============= EXTERNAL API (TheFork, OpenTable) =============
+@api_router.get("/external-api/connections")
+async def get_external_api_connections(user=Depends(get_current_user)):
+    """Liste les connexions API externes"""
+    from services.calendar_integration_service import CalendarIntegrationService
+    
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    service = CalendarIntegrationService(db)
+    connections = await service.get_external_api_connections(business_id)
+    return connections
+
+@api_router.post("/external-api/register")
+async def register_external_api(data: dict, user=Depends(get_current_user)):
+    """Enregistre une connexion API externe"""
+    from services.calendar_integration_service import CalendarIntegrationService
+    
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    platform = data.get("platform")
+    if not platform:
+        raise HTTPException(status_code=400, detail="Platform required")
+    
+    service = CalendarIntegrationService(db)
+    result = await service.register_external_api(
+        business_id,
+        platform,
+        data.get("api_key"),
+        data.get("webhook_secret")
+    )
+    return result
+
+@api_router.post("/webhooks/{platform}/{business_id}")
+async def handle_external_webhook(platform: str, business_id: str, payload: dict):
+    """Webhook pour plateformes externes (TheFork, OpenTable, etc.)"""
+    from services.calendar_integration_service import CalendarIntegrationService
+    
+    service = CalendarIntegrationService(db)
+    result = await service.handle_external_webhook(platform, business_id, payload)
+    return result
+
+# ============= ADMIN PLANS CRUD =============
+@api_router.post("/admin/plans")
+async def create_plan(data: dict, user=Depends(require_super_admin)):
+    """Crée un nouveau plan"""
+    plan = {
+        "id": data.get("id") or str(uuid.uuid4()),
+        "name": data.get("name", "Nouveau Plan"),
+        "price": data.get("price", 0),
+        "appointments_per_month": data.get("appointments_per_month", 100),
+        "staff_members": data.get("staff_members", 1),
+        "sms_notifications": data.get("sms_notifications", 50),
+        "features": data.get("features", []),
+        "is_active": data.get("is_active", True),
+        "trial_days": data.get("trial_days", 0),
+        "color": data.get("color", "#3b82f6"),
+        "order": data.get("order", 99),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.plans.insert_one(plan)
+    return {k: v for k, v in plan.items() if k != "_id"}
+
+@api_router.put("/admin/plans/{plan_id}")
+async def update_plan(plan_id: str, data: dict, user=Depends(require_super_admin)):
+    """Met à jour un plan"""
+    update_data = {
+        "name": data.get("name"),
+        "price": data.get("price"),
+        "appointments_per_month": data.get("appointments_per_month"),
+        "staff_members": data.get("staff_members"),
+        "sms_notifications": data.get("sms_notifications"),
+        "features": data.get("features"),
+        "is_active": data.get("is_active"),
+        "trial_days": data.get("trial_days"),
+        "color": data.get("color"),
+        "order": data.get("order"),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Filtrer les valeurs None
+    update_data = {k: v for k, v in update_data.items() if v is not None}
+    
+    result = await db.plans.update_one({"id": plan_id}, {"$set": update_data})
+    
+    if result.matched_count == 0:
+        # Créer le plan s'il n'existe pas (pour les plans par défaut)
+        update_data["id"] = plan_id
+        update_data["created_at"] = datetime.now(timezone.utc).isoformat()
+        await db.plans.insert_one(update_data)
+    
+    return {"success": True, "id": plan_id}
+
+@api_router.delete("/admin/plans/{plan_id}")
+async def delete_plan(plan_id: str, user=Depends(require_super_admin)):
+    """Supprime un plan"""
+    # Vérifier qu'aucune entreprise n'utilise ce plan
+    businesses_with_plan = await db.businesses.count_documents({"subscription.plan": plan_id})
+    
+    if businesses_with_plan > 0:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Impossible de supprimer: {businesses_with_plan} entreprise(s) utilisent ce plan"
+        )
+    
+    result = await db.plans.delete_one({"id": plan_id})
+    
+    return {
+        "success": result.deleted_count > 0,
+        "message": "Plan supprimé" if result.deleted_count > 0 else "Plan non trouvé"
+    }
+
+@api_router.get("/admin/plans")
+async def get_all_plans(user=Depends(get_current_user)):
+    """Liste tous les plans"""
+    plans = await db.plans.find({}, {"_id": 0}).sort("order", 1).to_list(20)
+    
+    # Si pas de plans, retourner les plans par défaut
+    if not plans:
+        default_plans = [
+            {"id": "free_trial", "name": "Essai Gratuit", "price": 0, "appointments_per_month": 30, "staff_members": 1, "sms_notifications": 10, "features": ["Email reminders", "Basic dashboard"], "is_active": True, "trial_days": 14, "color": "#f59e0b", "order": 1},
+            {"id": "solo", "name": "Solo", "price": 29, "appointments_per_month": 100, "staff_members": 1, "sms_notifications": 50, "features": ["All free features", "WhatsApp reminders", "Analytics"], "is_active": True, "trial_days": 0, "color": "#3b82f6", "order": 2},
+            {"id": "pro", "name": "Pro", "price": 59, "appointments_per_month": 500, "staff_members": 5, "sms_notifications": 200, "features": ["All Solo features", "SMS", "Deposit collection", "Risk score ML"], "is_active": True, "trial_days": 0, "color": "#15803d", "order": 3},
+            {"id": "business", "name": "Business", "price": 99, "appointments_per_month": -1, "staff_members": -1, "sms_notifications": -1, "features": ["Everything unlimited", "Priority support", "API access", "White label", "Calendar sync"], "is_active": True, "trial_days": 0, "color": "#8b5cf6", "order": 4},
+        ]
+        # Insérer les plans par défaut
+        for plan in default_plans:
+            await db.plans.update_one({"id": plan["id"]}, {"$set": plan}, upsert=True)
+        return default_plans
+    
+    return plans
+
 app.include_router(api_router)
 
 app.add_middleware(
