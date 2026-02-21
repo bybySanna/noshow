@@ -14,7 +14,8 @@ export default function ConfirmPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [action, setAction] = useState(null); // 'confirmed' | 'cancelled' | 'rescheduled'
-  const [newDate, setNewDate] = useState('');
+  const [showReschedule, setShowReschedule] = useState(false); // Controls visibility of reschedule form
+  const [newDate, setNewDate] = useState(''); // Stores the actual new date value
   const [newTime, setNewTime] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -186,7 +187,7 @@ export default function ConfirmPage() {
           <Button
             variant="outline"
             className="w-full h-12 rounded-full font-heading font-700"
-            onClick={() => setNewDate('show')}
+            onClick={() => setShowReschedule(true)}
             disabled={submitting}
             data-testid="reschedule-btn"
           >
@@ -207,15 +208,37 @@ export default function ConfirmPage() {
         </div>
 
         {/* Reschedule form */}
-        {newDate === 'show' && (
+        {showReschedule && (
           <div className="mt-4 bg-card rounded-2xl border border-border/50 p-4 space-y-3" data-testid="reschedule-form">
-            <p className="font-heading font-700 text-sm">Nouvelle date souhaitée :</p>
-            <Input type="date" value={newDate === 'show' ? '' : newDate} onChange={e => setNewDate(e.target.value)} className="h-11 rounded-xl" />
-            <Input type="time" value={newTime} onChange={e => setNewTime(e.target.value)} className="h-11 rounded-xl" />
+            <div className="flex items-center justify-between">
+              <p className="font-heading font-700 text-sm">Nouvelle date souhaitée :</p>
+              <button 
+                onClick={() => { setShowReschedule(false); setNewDate(''); setNewTime(''); }}
+                className="text-muted-foreground hover:text-foreground"
+                data-testid="close-reschedule-btn"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <Input 
+              type="date" 
+              value={newDate} 
+              onChange={e => setNewDate(e.target.value)} 
+              className="h-11 rounded-xl" 
+              data-testid="reschedule-date-input"
+              min={new Date().toISOString().split('T')[0]}
+            />
+            <Input 
+              type="time" 
+              value={newTime} 
+              onChange={e => setNewTime(e.target.value)} 
+              className="h-11 rounded-xl" 
+              data-testid="reschedule-time-input"
+            />
             <Button
               className="w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-heading font-700"
               onClick={() => handleAction('reschedule')}
-              disabled={submitting}
+              disabled={submitting || !newDate}
               data-testid="reschedule-submit-btn"
             >
               Confirmer le report
