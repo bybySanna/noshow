@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Calendar, LayoutDashboard, Users, Settings, BarChart2, Bell, LogOut, Sun, Moon, AlertTriangle } from 'lucide-react';
+import { Calendar, LayoutDashboard, Users, Settings, BarChart2, Bell, LogOut, Sun, Moon, AlertTriangle, CalendarDays, UserCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LangContext';
 import { useTheme } from '../context/ThemeContext';
@@ -9,19 +9,22 @@ import { cn } from '../lib/utils';
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, key: 'dashboard' },
   { to: '/appointments', icon: Calendar, key: 'appointments' },
+  { to: '/calendar', icon: CalendarDays, label_fr: 'Calendrier', label_en: 'Calendar', key: 'calendar' },
   { to: '/analytics', icon: BarChart2, key: 'analytics' },
+  { to: '/clients', icon: UserCircle, label_fr: 'Clients', label_en: 'Clients', key: 'clients' },
+  { to: '/clients-risk', icon: AlertTriangle, label_fr: 'Risques', label_en: 'Risks', key: 'risks' },
   { to: '/notifications', icon: Bell, key: 'notifications' },
-  { to: '/clients-risk', icon: AlertTriangle, label_fr: 'Clients', label_en: 'Clients', key: 'clients' },
   { to: '/staff', icon: Users, key: 'staff' },
   { to: '/settings', icon: Settings, key: 'settings' },
 ];
 
-// Mobile nav shows only 4 items + logout
+// Mobile nav shows only 5 items
 const mobileNavItems = [
   { to: '/dashboard', icon: LayoutDashboard, key: 'dashboard' },
   { to: '/appointments', icon: Calendar, key: 'appointments' },
-  { to: '/analytics', icon: BarChart2, key: 'analytics' },
-  { to: '/notifications', icon: Bell, key: 'notifications' },
+  { to: '/calendar', icon: CalendarDays, key: 'calendar' },
+  { to: '/clients', icon: UserCircle, key: 'clients' },
+  { to: '/settings', icon: Settings, key: 'settings' },
 ];
 
 export default function BusinessLayout({ children }) {
@@ -115,7 +118,7 @@ export default function BusinessLayout({ children }) {
         </div>
       </main>
 
-      {/* Mobile Bottom Nav - 4 items + logout */}
+      {/* Mobile Bottom Nav - 5 items */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card border-t border-border/50 pb-safe">
         <div className="grid grid-cols-5 h-16">
           {mobileNavItems.map(item => (
@@ -129,17 +132,9 @@ export default function BusinessLayout({ children }) {
               data-testid={`mobile-nav-${item.key}`}
             >
               <item.icon className="w-5 h-5" />
-              <span className="text-[10px] font-heading font-600 capitalize">{t(item.key).split(' ')[0]}</span>
+              <span className="text-[10px] font-heading font-600 capitalize">{getLabel(item).split(' ')[0]}</span>
             </Link>
           ))}
-          <button
-            onClick={logout}
-            className="flex flex-col items-center justify-center gap-0.5 text-muted-foreground hover:text-destructive transition-colors"
-            data-testid="mobile-bottom-logout"
-          >
-            <LogOut className="w-5 h-5" />
-            <span className="text-[10px] font-heading font-600">{lang === 'fr' ? 'Quitter' : 'Logout'}</span>
-          </button>
         </div>
       </nav>
     </div>
