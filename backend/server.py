@@ -1003,6 +1003,139 @@ async def get_plans():
         }
     ]
 
+# ============= BUSINESS UTILITY ROUTES =============
+@api_router.get("/clients/blacklist")
+async def get_blacklist(user=Depends(get_current_user)):
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    blacklist = await db.blacklist.find({"business_id": business_id}, {"_id": 0}).to_list(100)
+    return blacklist
+
+@api_router.post("/clients/blacklist")
+async def add_to_blacklist(data: dict, user=Depends(get_current_user)):
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    entry = {
+        "id": str(uuid.uuid4()),
+        "business_id": business_id,
+        "client_phone": data.get("client_phone"),
+        "client_name": data.get("client_name"),
+        "reason": data.get("reason", "Repeated no-shows"),
+        "no_show_count": data.get("no_show_count", 1),
+        "added_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.blacklist.insert_one(entry)
+    return {k: v for k, v in entry.items() if k != "_id"}
+
+@api_router.delete("/clients/blacklist/{entry_id}")
+async def remove_from_blacklist(entry_id: str, user=Depends(get_current_user)):
+    business_id = user.get("business_id")
+    await db.blacklist.delete_one({"id": entry_id, "business_id": business_id})
+    return {"message": "Removed from blacklist"}
+
+@api_router.get("/clients/risk-scores")
+async def get_risk_scores(user=Depends(get_current_user)):
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    # Aggregate no-show counts per client phone
+    pipeline = [
+        {"$match": {"business_id": business_id}},
+        {"$group": {
+            "_id": "$client_phone",
+            "client_name": {"$last": "$client_name"},
+            "total": {"$sum": 1},
+            "no_shows": {"$sum": {"$cond": [{"$eq": ["$status", "no_show"]}, 1, 0]}},
+            "confirmed": {"$sum": {"$cond": [{"$eq": ["$status", "confirmed"]}, 1, 0]}}
+        }},
+        {"$addFields": {
+            "no_show_rate": {"$cond": [{"$gt": ["$total", 0]}, {"$divide": ["$no_shows", "$total"]}, 0]}
+        }},
+        {"$sort": {"no_show_rate": -1}},
+        {"$limit": 50}
+    ]
+    result = await db.appointments.aggregate(pipeline).to_list(50)
+    clients = []
+    for r in result:
+        rate = r.get("no_show_rate", 0)
+        risk = "high" if rate >= 0.5 else "medium" if rate >= 0.25 else "low"
+        clients.append({
+            "phone": r["_id"],
+            "client_name": r.get("client_name", ""),
+            "total_appointments": r["total"],
+            "no_shows": r["no_shows"],
+            "confirmed": r["confirmed"],
+            "no_show_rate": round(rate * 100, 1),
+            "risk_level": risk
+        })
+    return clients
+
+@api_router.post("/appointments/bulk-status")
+async def bulk_update_status(data: dict, user=Depends(get_current_user)):
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    ids = data.get("ids", [])
+    new_status = data.get("status")
+    if not ids or not new_status:
+        raise HTTPException(status_code=400, detail="ids and status required")
+    await db.appointments.update_many(
+        {"id": {"$in": ids}, "business_id": business_id},
+        {"$set": {"status": new_status}}
+    )
+    return {"updated": len(ids)}
+
+@api_router.get("/appointments/export")
+async def export_appointments(user=Depends(get_current_user)):
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    appts = await db.appointments.find({"business_id": business_id}, {"_id": 0}).sort("date", -1).to_list(1000)
+    return {"appointments": appts, "total": len(appts), "exported_at": datetime.now(timezone.utc).isoformat()}
+
+@api_router.get("/appointments/today")
+async def get_today_appointments(user=Depends(get_current_user)):
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    appts = await db.appointments.find({"business_id": business_id, "date": today}, {"_id": 0}).sort("time", 1).to_list(100)
+    return appts
+
+@api_router.get("/appointments/upcoming")
+async def get_upcoming_appointments(user=Depends(get_current_user), days: int = 7):
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    end_date = (datetime.now(timezone.utc) + timedelta(days=days)).strftime("%Y-%m-%d")
+    appts = await db.appointments.find(
+        {"business_id": business_id, "date": {"$gte": today, "$lte": end_date}},
+        {"_id": 0}
+    ).sort([("date", 1), ("time", 1)]).to_list(200)
+    return appts
+
+@api_router.get("/stats/business/weekly")
+async def get_weekly_stats(user=Depends(get_current_user)):
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    # Last 8 weeks data
+    result = []
+    for i in range(7, -1, -1):
+        week_start = (datetime.now(timezone.utc) - timedelta(days=(i+1)*7)).strftime("%Y-%m-%d")
+        week_end = (datetime.now(timezone.utc) - timedelta(days=i*7)).strftime("%Y-%m-%d")
+        total = await db.appointments.count_documents({"business_id": business_id, "date": {"$gte": week_start, "$lt": week_end}})
+        no_shows = await db.appointments.count_documents({"business_id": business_id, "date": {"$gte": week_start, "$lt": week_end}, "status": "no_show"})
+        confirmed = await db.appointments.count_documents({"business_id": business_id, "date": {"$gte": week_start, "$lt": week_end}, "status": "confirmed"})
+        result.append({
+            "week": f"S-{i}" if i > 0 else "Cette sem.",
+            "total": total, "no_shows": no_shows, "confirmed": confirmed
+        })
+    return result
+
 # ============= HEALTH CHECK =============
 @api_router.get("/")
 async def root():
@@ -1021,3 +1154,4 @@ app.add_middleware(
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+
