@@ -2280,36 +2280,7 @@ async def get_admin_conversation(business_id: str, user=Depends(require_super_ad
         "messages": messages
     }
 
-@api_router.post("/admin/conversations/{business_id}")
-async def send_admin_message(business_id: str, data: dict, user=Depends(require_super_admin)):
-    """Envoie un message à un business"""
-    message = {
-        "id": str(uuid.uuid4()),
-        "business_id": business_id,
-        "sender_id": user["id"],
-        "sender_role": "admin",
-        "sender_name": user.get("full_name", "Admin"),
-        "message": data.get("message", ""),
-        "read": False,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    
-    await db.internal_messages.insert_one(message)
-    
-    # Créer une notification pour le business
-    notif = {
-        "id": str(uuid.uuid4()),
-        "business_id": business_id,
-        "type": "admin_message",
-        "title": "Message de NoShowGone",
-        "content": data.get("message", "")[:100],
-        "read": False,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    await db.business_notifications.insert_one(notif)
-    
-    return {k: v for k, v in message.items() if k != "_id"}
-
+# IMPORTANT: Group message route must come BEFORE parameterized route
 @api_router.post("/admin/conversations/group")
 async def send_group_message(data: dict, user=Depends(require_super_admin)):
     """Envoie un message à plusieurs businesses"""
@@ -2344,6 +2315,36 @@ async def send_group_message(data: dict, user=Depends(require_super_admin)):
         sent_count += 1
     
     return {"sent": sent_count}
+
+@api_router.post("/admin/conversations/{business_id}")
+async def send_admin_message(business_id: str, data: dict, user=Depends(require_super_admin)):
+    """Envoie un message à un business"""
+    message = {
+        "id": str(uuid.uuid4()),
+        "business_id": business_id,
+        "sender_id": user["id"],
+        "sender_role": "admin",
+        "sender_name": user.get("full_name", "Admin"),
+        "message": data.get("message", ""),
+        "read": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.internal_messages.insert_one(message)
+    
+    # Créer une notification pour le business
+    notif = {
+        "id": str(uuid.uuid4()),
+        "business_id": business_id,
+        "type": "admin_message",
+        "title": "Message de NoShowGone",
+        "content": data.get("message", "")[:100],
+        "read": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.business_notifications.insert_one(notif)
+    
+    return {k: v for k, v in message.items() if k != "_id"}
 
 @api_router.delete("/admin/conversations/{business_id}/messages/{message_id}")
 async def delete_admin_message(business_id: str, message_id: str, user=Depends(require_super_admin)):
