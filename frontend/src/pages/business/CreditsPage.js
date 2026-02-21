@@ -93,10 +93,74 @@ export default function CreditsPage() {
   const [activeTab, setActiveTab] = useState('overview');
   const [purchasing, setPurchasing] = useState(false);
   const [selectedType, setSelectedType] = useState('sms');
+  const [useStripeCheckout, setUseStripeCheckout] = useState(true);
+  const [checkingPayment, setCheckingPayment] = useState(false);
 
   useEffect(() => {
     fetchData();
+    checkPaymentReturn();
   }, []);
+
+  // Vérifie si on revient d'un paiement Stripe
+  const checkPaymentReturn = async () => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('session_id');
+    const success = params.get('success');
+    const cancelled = params.get('cancelled');
+
+    if (cancelled) {
+      toast.error(lang === 'fr' ? 'Paiement annulé' : 'Payment cancelled');
+      window.history.replaceState({}, '', window.location.pathname);
+      return;
+    }
+
+    if (sessionId && success) {
+      setCheckingPayment(true);
+      await pollPaymentStatus(sessionId);
+      window.history.replaceState({}, '', window.location.pathname);
+      setCheckingPayment(false);
+    }
+  };
+
+  // Polling du statut de paiement
+  const pollPaymentStatus = async (sessionId, attempts = 0) => {
+    const maxAttempts = 5;
+    
+    if (attempts >= maxAttempts) {
+      toast.error(lang === 'fr' 
+        ? 'Vérification du paiement expirée. Consultez votre email.'
+        : 'Payment check timed out. Check your email.');
+      return;
+    }
+
+    try {
+      const response = await axios.get(`${API}/credits/checkout/status/${sessionId}`);
+      const data = response.data;
+
+      if (data.payment_status === 'paid') {
+        toast.success(
+          lang === 'fr' 
+            ? `Paiement réussi ! ${data.credits_added} crédits ajoutés.`
+            : `Payment successful! ${data.credits_added} credits added.`
+        );
+        fetchData();
+        return;
+      } else if (data.status === 'expired') {
+        toast.error(lang === 'fr' ? 'Session expirée' : 'Session expired');
+        return;
+      }
+
+      // Continuer le polling
+      await new Promise(r => setTimeout(r, 2000));
+      await pollPaymentStatus(sessionId, attempts + 1);
+    } catch (err) {
+      console.error('Payment status error:', err);
+      if (attempts < maxAttempts - 1) {
+        await new Promise(r => setTimeout(r, 2000));
+        await pollPaymentStatus(sessionId, attempts + 1);
+      }
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -116,12 +180,27 @@ export default function CreditsPage() {
   const purchasePack = async (packKey) => {
     setPurchasing(true);
     try {
-      await axios.post(`${API}/credits/purchase`, {
-        credit_type: selectedType,
-        pack_key: packKey
-      });
-      toast.success(lang === 'fr' ? 'Crédits ajoutés !' : 'Credits added!');
-      fetchData();
+      if (useStripeCheckout) {
+        // Paiement via Stripe Checkout
+        const response = await axios.post(`${API}/credits/checkout`, {
+          credit_type: selectedType,
+          pack_key: packKey,
+          origin_url: window.location.origin
+        });
+        
+        // Redirection vers Stripe
+        if (response.data.checkout_url) {
+          window.location.href = response.data.checkout_url;
+        }
+      } else {
+        // Mode simulation (sans paiement réel)
+        await axios.post(`${API}/credits/purchase`, {
+          credit_type: selectedType,
+          pack_key: packKey
+        });
+        toast.success(lang === 'fr' ? 'Crédits ajoutés !' : 'Credits added!');
+        fetchData();
+      }
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Erreur');
     } finally {
