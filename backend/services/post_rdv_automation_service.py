@@ -328,35 +328,74 @@ class PostRdvAutomationService:
         return await self._handle_failure(item, result)
     
     async def _send_message(self, item: Dict) -> Dict:
-        """Envoie le message via le canal approprié"""
+        """Envoie le message via le canal approprié avec vérification des crédits"""
         channel = item["channel"]
         recipient = item["recipient"]
         message = item["message"]
+        business_id = item["business_id"]
+        
+        # Importer le service de crédits
+        from services.credits_service import CreditsService, EmailService, CreditType
+        credits_service = CreditsService(self.db)
+        
+        # Mapper le canal au type de crédit
+        credit_type_map = {
+            "sms": CreditType.SMS,
+            "whatsapp": CreditType.WHATSAPP,
+            "email": CreditType.EMAIL
+        }
+        
+        credit_type = credit_type_map.get(channel)
+        if credit_type:
+            # Vérifier les crédits AVANT envoi
+            check = await credits_service.check_credits(business_id, credit_type)
+            if not check.get("can_send") and not check.get("unlimited"):
+                return {
+                    "success": False,
+                    "error": f"Crédits {channel} épuisés",
+                    "channel": channel,
+                    "needs_upgrade": True
+                }
         
         try:
             if self.simulation_mode:
                 # Mode simulation
                 logger.info(f"📤 [SIMULATION] {channel.upper()} → {recipient}: {message[:80]}...")
-                return {
+                result = {
                     "success": True,
                     "channel": channel,
                     "simulation": True,
                     "message_id": f"SIM-{uuid.uuid4().hex[:8]}"
                 }
+            else:
+                # Mode réel
+                if channel == "sms":
+                    result = await self._send_sms(recipient, message)
+                elif channel == "whatsapp":
+                    result = await self._send_whatsapp(recipient, message)
+                elif channel == "email":
+                    # Utiliser le service email avec Resend
+                    email_service = EmailService(self.db)
+                    result = await email_service.send_email(
+                        business_id=business_id,
+                        to_email=item.get("client_email", recipient),
+                        subject=f"Message de {item.get('business_name', 'votre établissement')}",
+                        html_content=f"<p>{message.replace(chr(10), '<br>')}</p>",
+                        track_usage=False  # On gère les crédits ici
+                    )
+                else:
+                    return {"success": False, "error": f"Unknown channel: {channel}"}
             
-            # Mode réel
-            if channel == "sms":
-                return await self._send_sms(recipient, message)
-            elif channel == "whatsapp":
-                return await self._send_whatsapp(recipient, message)
-            elif channel == "email":
-                return await self._send_email(
-                    item.get("client_email", recipient),
-                    f"Message de {item.get('business_name', 'votre établissement')}",
-                    message
+            # Consommer le crédit si envoi réussi
+            if result.get("success") and credit_type:
+                await credits_service.consume_credit(
+                    business_id,
+                    credit_type,
+                    1,
+                    {"recipient": recipient, "channel": channel, "queue_id": item["id"]}
                 )
             
-            return {"success": False, "error": f"Unknown channel: {channel}"}
+            return result
             
         except Exception as e:
             logger.error(f"❌ Erreur envoi {channel}: {str(e)}")
