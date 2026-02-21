@@ -942,41 +942,7 @@ async def admin_business_details(business_id: str, user=Depends(require_super_ad
         }
     }
 
-@api_router.get("/admin/plans")
-async def get_admin_plans(user=Depends(require_super_admin)):
-    plans = await db.plans_config.find({}, {"_id": 0}).to_list(10)
-    if not plans:
-        # Return defaults
-        return [
-            {"id": "free_trial", "name": "Essai Gratuit", "price": 0, "appointments_per_month": 30, "staff_members": 1, "sms_notifications": 10, "features": ["Email reminders", "Basic dashboard"], "is_active": True, "trial_days": 14},
-            {"id": "solo", "name": "Solo", "price": 29, "appointments_per_month": 100, "staff_members": 1, "sms_notifications": 50, "features": ["All free features", "WhatsApp reminders", "Analytics"], "is_active": True, "trial_days": 0},
-            {"id": "pro", "name": "Pro", "price": 59, "appointments_per_month": 500, "staff_members": 5, "sms_notifications": 200, "features": ["All Solo features", "SMS", "Deposit collection", "Risk score"], "is_active": True, "trial_days": 0},
-            {"id": "business", "name": "Business", "price": 99, "appointments_per_month": -1, "staff_members": -1, "sms_notifications": -1, "features": ["Everything unlimited", "Priority support", "API access", "White label"], "is_active": True, "trial_days": 0},
-        ]
-    return plans
-
-@api_router.put("/admin/plans/{plan_id}")
-async def update_plan(plan_id: str, data: dict, user=Depends(require_super_admin)):
-    existing = await db.plans_config.find_one({"id": plan_id})
-    if existing:
-        await db.plans_config.update_one({"id": plan_id}, {"$set": data})
-    else:
-        data["id"] = plan_id
-        await db.plans_config.insert_one(data)
-    updated = await db.plans_config.find_one({"id": plan_id}, {"_id": 0})
-    return updated or data
-
-@api_router.post("/admin/plans")
-async def create_plan(data: dict, user=Depends(require_super_admin)):
-    data["id"] = str(uuid.uuid4())
-    data["created_at"] = datetime.now(timezone.utc).isoformat()
-    await db.plans_config.insert_one(data)
-    return {k: v for k, v in data.items() if k != "_id"}
-
-@api_router.delete("/admin/plans/{plan_id}")
-async def delete_plan(plan_id: str, user=Depends(require_super_admin)):
-    await db.plans_config.delete_one({"id": plan_id})
-    return {"message": "Plan deleted"}
+# Legacy plans routes removed - see consolidated routes at end of file (CRUD for db.plans)
 
 @api_router.post("/admin/businesses/{business_id}/message")
 async def send_message_to_business(business_id: str, data: dict, user=Depends(require_super_admin)):
