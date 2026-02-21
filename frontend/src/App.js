@@ -15,6 +15,8 @@ import SettingsPage from './pages/business/SettingsPage';
 import AnalyticsPage from './pages/business/AnalyticsPage';
 import NotificationsPage from './pages/business/NotificationsPage';
 import ClientsRiskPage from './pages/business/ClientsRiskPage';
+import CalendarPage from './pages/business/CalendarPage';
+import ClientsPage from './pages/business/ClientsPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminBusinesses from './pages/admin/AdminBusinesses';
 import AdminPlans from './pages/admin/AdminPlans';
@@ -74,6 +76,8 @@ function AppRoutes() {
       <Route path="/analytics" element={<ProtectedRoute roles={['business_owner']}><AnalyticsPage /></ProtectedRoute>} />
       <Route path="/notifications" element={<ProtectedRoute roles={['business_owner']}><NotificationsPage /></ProtectedRoute>} />
       <Route path="/clients-risk" element={<ProtectedRoute roles={['business_owner']}><ClientsRiskPage /></ProtectedRoute>} />
+      <Route path="/calendar" element={<ProtectedRoute roles={['business_owner']}><CalendarPage /></ProtectedRoute>} />
+      <Route path="/clients" element={<ProtectedRoute roles={['business_owner']}><ClientsPage /></ProtectedRoute>} />
 
       {/* Super Admin */}
       <Route path="/admin" element={<ProtectedRoute roles={['super_admin']}><AdminDashboard /></ProtectedRoute>} />
