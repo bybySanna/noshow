@@ -369,6 +369,36 @@ export default function CreditsPage() {
 
           {activeTab === 'purchase' && dashboard && (
             <div className="space-y-6">
+              {/* Payment mode toggle */}
+              <div className="bg-card rounded-xl p-4 border border-border">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <CreditCard className="w-5 h-5 text-primary" />
+                    <div>
+                      <p className="font-heading font-600">
+                        {lang === 'fr' ? 'Paiement Stripe' : 'Stripe Payment'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {useStripeCheckout 
+                          ? (lang === 'fr' ? 'Paiement sécurisé par carte' : 'Secure card payment')
+                          : (lang === 'fr' ? 'Mode simulation (gratuit)' : 'Simulation mode (free)')}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setUseStripeCheckout(!useStripeCheckout)}
+                    className={`w-12 h-6 rounded-full transition-colors ${
+                      useStripeCheckout ? 'bg-primary' : 'bg-muted'
+                    }`}
+                    data-testid="toggle-stripe"
+                  >
+                    <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                      useStripeCheckout ? 'translate-x-6' : 'translate-x-0.5'
+                    }`} />
+                  </button>
+                </div>
+              </div>
+
               {/* Credit type selector */}
               <div className="flex gap-2">
                 {Object.entries(creditConfig).map(([type, config]) => (
@@ -377,6 +407,7 @@ export default function CreditsPage() {
                     variant={selectedType === type ? 'default' : 'outline'}
                     onClick={() => setSelectedType(type)}
                     className="rounded-full"
+                    data-testid={`select-${type}`}
                   >
                     <config.icon className="w-4 h-4 mr-2" />
                     {config.label}
@@ -398,13 +429,18 @@ export default function CreditsPage() {
                       price={pack.price_cents}
                       onPurchase={purchasePack}
                       loading={purchasing}
+                      useStripe={useStripeCheckout}
                     />
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground mt-4">
-                  {lang === 'fr' 
-                    ? 'Les crédits achetés n\'expirent jamais et s\'ajoutent à votre quota mensuel.'
-                    : 'Purchased credits never expire and are added to your monthly quota.'}
+                  {useStripeCheckout 
+                    ? (lang === 'fr' 
+                        ? 'Paiement sécurisé via Stripe. Les crédits sont ajoutés instantanément après le paiement.'
+                        : 'Secure payment via Stripe. Credits are added instantly after payment.')
+                    : (lang === 'fr' 
+                        ? 'Mode simulation : les crédits sont ajoutés sans paiement réel.'
+                        : 'Simulation mode: credits are added without real payment.')}
                 </p>
               </div>
 
