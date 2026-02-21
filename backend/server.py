@@ -2683,6 +2683,318 @@ async def search_businesses(q: str, user=Depends(require_super_admin)):
     ).limit(20).to_list(20)
     return businesses
 
+# ============= POST-RDV AUTOMATION =============
+from services.post_rdv_automation_service import PostRdvAutomationService
+
+@api_router.get("/automation/queue")
+async def get_automation_queue(
+    user=Depends(get_current_user),
+    status: Optional[str] = None,
+    limit: int = 50
+):
+    """Liste la queue d'envoi post-RDV pour l'entreprise"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    query = {"business_id": business_id}
+    if status:
+        query["status"] = status
+    
+    items = await db.post_rdv_queue.find(query, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    # Stats rapides
+    total = await db.post_rdv_queue.count_documents({"business_id": business_id})
+    pending = await db.post_rdv_queue.count_documents({"business_id": business_id, "status": {"$in": ["pending", "retrying", "sending"]}})
+    sent = await db.post_rdv_queue.count_documents({"business_id": business_id, "status": {"$in": ["sent", "delivered"]}})
+    failed = await db.post_rdv_queue.count_documents({"business_id": business_id, "status": "failed"})
+    
+    return {
+        "items": items,
+        "stats": {"total": total, "pending": pending, "sent": sent, "failed": failed}
+    }
+
+@api_router.get("/automation/analytics")
+async def get_automation_analytics(user=Depends(get_current_user), days: int = 30):
+    """Statistiques d'automatisation pour le dashboard business"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    service = PostRdvAutomationService(db)
+    return await service.get_business_analytics(business_id, days)
+
+@api_router.get("/automation/templates")
+async def get_automation_templates(user=Depends(get_current_user)):
+    """Récupère les templates post-RDV de l'entreprise"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    service = PostRdvAutomationService(db)
+    return await service.get_business_templates(business_id)
+
+@api_router.post("/automation/templates")
+async def save_automation_template(data: dict, user=Depends(get_current_user)):
+    """Sauvegarde un template post-RDV personnalisé"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    service = PostRdvAutomationService(db)
+    return await service.save_business_template(business_id, data)
+
+@api_router.delete("/automation/templates/{template_id}")
+async def delete_automation_template(template_id: str, user=Depends(get_current_user)):
+    """Supprime un template post-RDV personnalisé"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    result = await db.post_rdv_templates.delete_one({"id": template_id, "business_id": business_id, "is_default": False})
+    return {"deleted": result.deleted_count > 0}
+
+@api_router.get("/automation/settings")
+async def get_automation_settings(user=Depends(get_current_user)):
+    """Récupère les paramètres d'automatisation de l'entreprise"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    business = await db.businesses.find_one({"id": business_id}, {"_id": 0, "post_rdv_settings": 1})
+    
+    # Paramètres par défaut
+    default_settings = {
+        "enabled": True,
+        "enabled_templates": ["thankyou_standard"],
+        "preferred_channel": "sms",
+        "fallback_enabled": True,
+        "fallback_order": ["whatsapp", "email"],
+        "google_review_link": "",
+        "wheel_of_fortune_link": "",
+        "loyalty_discount": "10",
+        "promo_code": "",
+        "send_delay_minutes": 0,  # 0 = immédiat
+        "business_hours_only": False,
+        "quiet_hours_start": "21:00",
+        "quiet_hours_end": "09:00"
+    }
+    
+    settings = business.get("post_rdv_settings", {}) if business else {}
+    return {**default_settings, **settings}
+
+@api_router.put("/automation/settings")
+async def update_automation_settings(data: dict, user=Depends(get_current_user)):
+    """Met à jour les paramètres d'automatisation"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    service = PostRdvAutomationService(db)
+    return await service.update_business_settings(business_id, data)
+
+@api_router.post("/automation/trigger/{appointment_id}")
+async def manual_trigger_post_rdv(appointment_id: str, user=Depends(get_current_user)):
+    """Déclenche manuellement l'envoi post-RDV (pour debug ou re-envoi)"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    service = PostRdvAutomationService(db)
+    return await service.trigger_post_rdv(appointment_id, business_id)
+
+@api_router.post("/automation/retry/{queue_id}")
+async def retry_queue_item(queue_id: str, user=Depends(get_current_user)):
+    """Retente l'envoi d'un message échoué"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    # Vérifier que l'item appartient à l'entreprise
+    item = await db.post_rdv_queue.find_one({"id": queue_id, "business_id": business_id}, {"_id": 0})
+    if not item:
+        raise HTTPException(status_code=404, detail="Queue item not found")
+    
+    # Remettre en pending
+    await db.post_rdv_queue.update_one(
+        {"id": queue_id},
+        {"$set": {"status": "pending", "retry_count": 0, "error_message": None}}
+    )
+    
+    service = PostRdvAutomationService(db)
+    return await service.process_queue_item(queue_id)
+
+@api_router.post("/automation/track-click")
+async def track_click(data: dict):
+    """Track un clic sur un lien (Google Avis, Roue Fortune)"""
+    queue_id = data.get("queue_id")
+    click_type = data.get("type")  # google_review, wheel
+    
+    if not queue_id or not click_type:
+        raise HTTPException(status_code=400, detail="queue_id and type required")
+    
+    update_field = f"click_tracking.{click_type}_clicked"
+    await db.post_rdv_queue.update_one(
+        {"id": queue_id},
+        {"$set": {
+            update_field: True,
+            "click_tracking.link_clicked_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {"tracked": True}
+
+# ============= ADMIN POST-RDV ANALYTICS =============
+@api_router.get("/admin/automation/analytics")
+async def get_admin_automation_analytics(user=Depends(require_super_admin)):
+    """Statistiques globales d'automatisation pour Super Admin"""
+    service = PostRdvAutomationService(db)
+    return await service.get_admin_analytics()
+
+@api_router.get("/admin/automation/queue")
+async def get_admin_queue(
+    user=Depends(require_super_admin),
+    business_id: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 100
+):
+    """Liste globale de la queue pour monitoring admin"""
+    query = {}
+    if business_id:
+        query["business_id"] = business_id
+    if status:
+        query["status"] = status
+    
+    items = await db.post_rdv_queue.find(query, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    # Enrichir avec les noms d'entreprise
+    for item in items:
+        biz = await db.businesses.find_one({"id": item["business_id"]}, {"_id": 0, "name": 1})
+        item["business_name"] = biz.get("name") if biz else "Unknown"
+    
+    return items
+
+@api_router.post("/admin/automation/process-retries")
+async def process_retries(user=Depends(require_super_admin)):
+    """Traite manuellement les messages en attente de retry"""
+    service = PostRdvAutomationService(db)
+    return await service.process_retry_queue()
+
+# ============= ONBOARDING ENRICHI (P1) =============
+@api_router.get("/onboarding/status")
+async def get_onboarding_status(user=Depends(get_current_user)):
+    """Récupère le statut d'onboarding de l'entreprise"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    business = await db.businesses.find_one({"id": business_id}, {"_id": 0})
+    if not business:
+        raise HTTPException(status_code=404, detail="Business not found")
+    
+    settings = business.get("settings", {})
+    post_rdv = business.get("post_rdv_settings", {})
+    
+    steps = {
+        "profile_complete": bool(business.get("phone") and business.get("address")),
+        "timezone_set": bool(settings.get("timezone")),
+        "business_hours_set": bool(settings.get("opening_hours")),
+        "reminder_settings": bool(settings.get("reminders")),
+        "post_rdv_enabled": post_rdv.get("enabled", False),
+        "google_review_link": bool(post_rdv.get("google_review_link")),
+        "first_appointment": await db.appointments.count_documents({"business_id": business_id}) > 0
+    }
+    
+    completed = sum(1 for v in steps.values() if v)
+    total = len(steps)
+    
+    return {
+        "steps": steps,
+        "completed": completed,
+        "total": total,
+        "progress_percent": round(completed / total * 100),
+        "is_complete": completed == total
+    }
+
+@api_router.put("/onboarding/profile")
+async def update_onboarding_profile(data: dict, user=Depends(get_current_user)):
+    """Met à jour le profil entreprise (onboarding)"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    update_data = {}
+    
+    # Champs de base
+    if "phone" in data:
+        update_data["phone"] = data["phone"]
+    if "address" in data:
+        update_data["address"] = data["address"]
+    if "email" in data:
+        update_data["email"] = data["email"]
+    if "website" in data:
+        update_data["website"] = data["website"]
+    
+    # Paramètres avancés
+    if "timezone" in data:
+        update_data["settings.timezone"] = data["timezone"]
+    if "opening_hours" in data:
+        update_data["settings.opening_hours"] = data["opening_hours"]
+    if "lang" in data:
+        update_data["settings.lang"] = data["lang"]
+    
+    # Post-RDV settings
+    if "google_review_link" in data:
+        update_data["post_rdv_settings.google_review_link"] = data["google_review_link"]
+    if "wheel_of_fortune_link" in data:
+        update_data["post_rdv_settings.wheel_of_fortune_link"] = data["wheel_of_fortune_link"]
+    
+    if update_data:
+        update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        await db.businesses.update_one({"id": business_id}, {"$set": update_data})
+    
+    return {"success": True}
+
+@api_router.put("/onboarding/business-hours")
+async def update_business_hours(data: dict, user=Depends(get_current_user)):
+    """Met à jour les horaires d'ouverture"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    # Format attendu: {"monday": {"open": "09:00", "close": "18:00", "closed": false}, ...}
+    hours = data.get("opening_hours", {})
+    timezone_str = data.get("timezone", "Europe/Paris")
+    
+    await db.businesses.update_one(
+        {"id": business_id},
+        {"$set": {
+            "settings.opening_hours": hours,
+            "settings.timezone": timezone_str,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {"success": True}
+
+# ============= TIMEZONES DISPONIBLES =============
+@api_router.get("/utils/timezones")
+async def get_timezones():
+    """Liste des fuseaux horaires disponibles"""
+    timezones = [
+        {"value": "Europe/Paris", "label": "Paris (France)"},
+        {"value": "Europe/London", "label": "Londres (UK)"},
+        {"value": "Europe/Brussels", "label": "Bruxelles (Belgique)"},
+        {"value": "Europe/Zurich", "label": "Zurich (Suisse)"},
+        {"value": "America/New_York", "label": "New York (USA)"},
+        {"value": "America/Los_Angeles", "label": "Los Angeles (USA)"},
+        {"value": "America/Montreal", "label": "Montréal (Canada)"},
+        {"value": "Africa/Casablanca", "label": "Casablanca (Maroc)"},
+        {"value": "Africa/Tunis", "label": "Tunis (Tunisie)"},
+        {"value": "Asia/Dubai", "label": "Dubai (UAE)"},
+    ]
+    return timezones
+
 app.include_router(api_router)
 
 app.add_middleware(
