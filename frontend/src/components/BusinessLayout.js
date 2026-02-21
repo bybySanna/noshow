@@ -1,10 +1,10 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Calendar, LayoutDashboard, Users, Settings, BarChart2, Bell, LogOut, Sun, Moon, Globe } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { useLang } from '../../context/LangContext';
-import { useTheme } from '../../context/ThemeContext';
-import { cn } from '../../lib/utils';
+import { useAuth } from '../context/AuthContext';
+import { useLang } from '../context/LangContext';
+import { useTheme } from '../context/ThemeContext';
+import { cn } from '../lib/utils';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, key: 'dashboard' },
