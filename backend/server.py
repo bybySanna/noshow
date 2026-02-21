@@ -536,6 +536,84 @@ async def get_appointments(
     appts = await db.appointments.find(query, {"_id": 0}).sort("date", -1).limit(limit).to_list(limit)
     return appts
 
+# IMPORTANT: Specific routes must come BEFORE parameterized routes
+@api_router.get("/appointments/calendar")
+async def get_calendar_appointments(user=Depends(get_current_user), start_date: str = None, end_date: str = None):
+    """RDV formatés pour vue calendrier"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    if not start_date:
+        start_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if not end_date:
+        end_date = (datetime.now(timezone.utc) + timedelta(days=30)).strftime("%Y-%m-%d")
+    
+    appts = await db.appointments.find(
+        {"business_id": business_id, "date": {"$gte": start_date, "$lte": end_date}},
+        {"_id": 0}
+    ).sort([("date", 1), ("time", 1)]).to_list(500)
+    
+    # Grouper par date
+    by_date = {}
+    for appt in appts:
+        date = appt["date"]
+        if date not in by_date:
+            by_date[date] = []
+        by_date[date].append(appt)
+    
+    return {
+        "appointments": appts,
+        "by_date": by_date,
+        "start_date": start_date,
+        "end_date": end_date
+    }
+
+@api_router.get("/appointments/today")
+async def get_today_appointments_route(user=Depends(get_current_user)):
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    appts = await db.appointments.find({"business_id": business_id, "date": today}, {"_id": 0}).sort("time", 1).to_list(100)
+    return appts
+
+@api_router.get("/appointments/upcoming")
+async def get_upcoming_appointments_route(user=Depends(get_current_user), days: int = 7):
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    end_date = (datetime.now(timezone.utc) + timedelta(days=days)).strftime("%Y-%m-%d")
+    appts = await db.appointments.find(
+        {"business_id": business_id, "date": {"$gte": today, "$lte": end_date}},
+        {"_id": 0}
+    ).sort([("date", 1), ("time", 1)]).to_list(200)
+    return appts
+
+@api_router.get("/appointments/export")
+async def export_appointments_route(user=Depends(get_current_user)):
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    appts = await db.appointments.find({"business_id": business_id}, {"_id": 0}).sort("date", -1).to_list(1000)
+    return {"appointments": appts, "total": len(appts), "exported_at": datetime.now(timezone.utc).isoformat()}
+
+@api_router.post("/appointments/bulk-status")
+async def bulk_update_status_route(data: dict, user=Depends(get_current_user)):
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    ids = data.get("ids", [])
+    new_status = data.get("status")
+    if not ids or not new_status:
+        raise HTTPException(status_code=400, detail="ids and status required")
+    await db.appointments.update_many(
+        {"id": {"$in": ids}, "business_id": business_id},
+        {"$set": {"status": new_status}}
+    )
+    return {"updated": len(ids)}
+
 @api_router.get("/appointments/{appointment_id}")
 async def get_appointment(appointment_id: str, user=Depends(get_current_user)):
     business_id = user.get("business_id")
