@@ -4,7 +4,7 @@ import requests
 import json
 
 def test_admin_endpoints():
-    base_url = "https://parfait-app-7.preview.emergentagent.com"
+    base_url = "https://no-show-reduction.preview.emergentagent.com"
     
     # Login as admin
     login_res = requests.post(f'{base_url}/api/auth/login', json={

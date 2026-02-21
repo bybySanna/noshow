@@ -4,7 +4,7 @@ from datetime import datetime
 import json
 
 class NoShowGoneAPITester:
-    def __init__(self, base_url="https://parfait-app-7.preview.emergentagent.com"):
+    def __init__(self, base_url="https://no-show-reduction.preview.emergentagent.com"):
         self.base_url = base_url
         self.admin_token = None
         self.business_token = None
@@ -232,7 +232,7 @@ class NoShowGoneAPITester:
 
 def main():
     print("🚀 Starting NoShowGone API Tests...")
-    print(f"Testing against: https://parfait-app-7.preview.emergentagent.com")
+    print(f"Testing against: https://no-show-reduction.preview.emergentagent.com")
     
     tester = NoShowGoneAPITester()
     

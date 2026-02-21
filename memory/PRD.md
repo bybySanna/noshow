@@ -7,7 +7,7 @@ SaaS anti no-show permettant aux entreprises de réduire les absences aux RDV.
 - Frontend: React (mobile-first, dark/light mode, bilingual FR/EN)
 - Backend: FastAPI + MongoDB
 - Auth: JWT custom
-- Deployed: https://parfait-app-7.preview.emergentagent.com
+- Deployed: https://no-show-reduction.preview.emergentagent.com
 
 ## Rôles
 - super_admin: admin@noshow.com / admin123456
