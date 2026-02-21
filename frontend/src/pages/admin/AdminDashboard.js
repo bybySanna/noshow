@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Calendar, TrendingDown, DollarSign, Users, Activity, ArrowUpRight, ArrowDownRight, Bell, AlertTriangle, CheckCircle, Zap, Send, Server, RefreshCw } from 'lucide-react';
+import { Building2, Calendar, TrendingDown, DollarSign, Users, Activity, ArrowUpRight, ArrowDownRight, Bell, AlertTriangle, CheckCircle, Zap, Send, Server, RefreshCw, MessageSquare, Award, Clock } from 'lucide-react';
 import AdminLayout from '../../components/AdminLayout';
 import { useLang } from '../../context/LangContext';
 import { Button } from '../../components/ui/button';
@@ -19,21 +19,24 @@ export default function AdminDashboard() {
   const [showBroadcast, setShowBroadcast] = useState(false);
   const [broadcastMsg, setBroadcastMsg] = useState('');
   const [sending, setSending] = useState(false);
+  const [insights, setInsights] = useState(null);
 
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     try {
-      const [statsRes, chartRes, actRes, healthRes] = await Promise.all([
+      const [statsRes, chartRes, actRes, healthRes, insightsRes] = await Promise.all([
         axios.get(`${API}/admin/dashboard`),
         axios.get(`${API}/admin/stats`),
         axios.get(`${API}/admin/activity?limit=5`),
         axios.get(`${API}/admin/system-health`),
+        axios.get(`${API}/admin/insights`).catch(() => ({ data: null })),
       ]);
       setStats(statsRes.data);
       setChartData(chartRes.data.monthly_signups || []);
       setActivity(actRes.data);
       setSystemHealth(healthRes.data);
+      setInsights(insightsRes.data);
     } catch (err) {
       toast.error('Erreur chargement stats admin');
     } finally {
@@ -311,6 +314,94 @@ export default function AdminDashboard() {
               )}
             </div>
           </div>
+
+          {/* Insights - 2000% Pertinent Section */}
+          {insights && (
+            <div className="grid md:grid-cols-3 gap-5 mt-5">
+              {/* At Risk Businesses */}
+              <div className="bg-card rounded-2xl border border-accent/30 p-5 card-shadow">
+                <h2 className="font-heading font-700 text-sm mb-4 flex items-center gap-2 text-accent">
+                  <AlertTriangle className="w-4 h-4" />
+                  {lang === 'fr' ? 'Entreprises à risque' : 'At Risk Businesses'}
+                </h2>
+                {insights.at_risk_businesses?.length > 0 ? (
+                  <div className="space-y-3">
+                    {insights.at_risk_businesses.map((biz, i) => (
+                      <div key={i} className="flex items-center justify-between text-sm">
+                        <span className="font-heading font-600 truncate flex-1">{biz.business_name}</span>
+                        <span className="text-accent font-mono text-xs">{biz.no_show_rate}% no-show</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    {lang === 'fr' ? 'Aucune entreprise à risque' : 'No at-risk businesses'}
+                  </p>
+                )}
+              </div>
+
+              {/* Top Performers */}
+              <div className="bg-card rounded-2xl border border-green-500/30 p-5 card-shadow">
+                <h2 className="font-heading font-700 text-sm mb-4 flex items-center gap-2 text-green-600 dark:text-green-400">
+                  <Award className="w-4 h-4" />
+                  {lang === 'fr' ? 'Top performers' : 'Top Performers'}
+                </h2>
+                {insights.top_performers?.length > 0 ? (
+                  <div className="space-y-3">
+                    {insights.top_performers.slice(0, 3).map((biz, i) => (
+                      <div key={i} className="flex items-center justify-between text-sm">
+                        <span className="font-heading font-600 truncate flex-1">{biz.business_name}</span>
+                        <span className="text-green-600 dark:text-green-400 font-mono text-xs">{biz.success_rate}%</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    {lang === 'fr' ? 'Pas de données' : 'No data'}
+                  </p>
+                )}
+              </div>
+
+              {/* Quick Stats */}
+              <div className="bg-card rounded-2xl border border-border/50 p-5 card-shadow">
+                <h2 className="font-heading font-700 text-sm mb-4 flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-yellow-500" />
+                  {lang === 'fr' ? 'Alertes du jour' : 'Today\'s Alerts'}
+                </h2>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-muted-foreground" />
+                      <span>{lang === 'fr' ? 'RDV aujourd\'hui' : 'Today\'s appts'}</span>
+                    </div>
+                    <span className="font-heading font-700 text-primary">{insights.today_appointments_all || 0}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4 text-muted-foreground" />
+                      <span>{lang === 'fr' ? 'Messages non lus' : 'Unread messages'}</span>
+                    </div>
+                    <span className={`font-heading font-700 ${insights.unread_support_messages > 0 ? 'text-accent' : 'text-muted-foreground'}`}>
+                      {insights.unread_support_messages || 0}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-muted-foreground" />
+                      <span>{lang === 'fr' ? 'Essais expirent bientôt' : 'Expiring trials'}</span>
+                    </div>
+                    <span className="font-heading font-700 text-yellow-600 dark:text-yellow-400">
+                      {insights.expiring_trials?.length || 0}
+                    </span>
+                  </div>
+                </div>
+                <Link to="/admin/messaging" className="mt-4 flex items-center gap-2 text-xs text-primary font-heading font-600 hover:underline">
+                  <MessageSquare className="w-3 h-3" />
+                  {lang === 'fr' ? 'Ouvrir la messagerie' : 'Open messaging'}
+                </Link>
+              </div>
+            </div>
+          )}
         </>
       )}
     </AdminLayout>
