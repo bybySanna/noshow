@@ -1,0 +1,57 @@
+{
+  "summary": "10/10 tests passed",
+  "success_rate": 100.0,
+  "results": [
+    {
+      "test": "Health Check",
+      "status": "PASS",
+      "details": "Status 200"
+    },
+    {
+      "test": "Admin Login",
+      "status": "PASS",
+      "details": "Status 200"
+    },
+    {
+      "test": "Business Owner Login",
+      "status": "PASS",
+      "details": "Status 200"
+    },
+    {
+      "test": "Admin Dashboard Stats",
+      "status": "PASS",
+      "details": "Status 200"
+    },
+    {
+      "test": "Admin Businesses List",
+      "status": "PASS",
+      "details": "Status 200"
+    },
+    {
+      "test": "Business Stats",
+      "status": "PASS",
+      "details": "Status 200"
+    },
+    {
+      "test": "Get Appointments",
+      "status": "PASS",
+      "details": "Status 200"
+    },
+    {
+      "test": "Get Business Info",
+      "status": "PASS",
+      "details": "Status 200"
+    },
+    {
+      "test": "Create Appointment",
+      "status": "PASS",
+      "details": "Status 200"
+    },
+    {
+      "test": "Confirmation Token (Mock)",
+      "status": "PASS",
+      "details": "Status 404"
+    }
+  ],
+  "timestamp": "2026-02-21T11:21:21.463392"
+}
