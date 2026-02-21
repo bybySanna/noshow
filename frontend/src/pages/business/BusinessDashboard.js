@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, TrendingDown, TrendingUp, CheckCircle, AlertCircle, Plus, ArrowRight, Clock, Users, Zap, Bell, RefreshCw } from 'lucide-react';
+import { Calendar, TrendingDown, TrendingUp, CheckCircle, AlertCircle, Plus, ArrowRight, Clock, Users, Zap, Bell, RefreshCw, Brain, Link2 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { useAuth } from '../../context/AuthContext';
 import { useLang } from '../../context/LangContext';
