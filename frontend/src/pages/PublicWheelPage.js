@@ -13,12 +13,11 @@ const AnimatedWheel = ({ segments = [], spinning, onSpinEnd, result }) => {
   
   useEffect(() => {
     if (spinning && result !== null && segments.length > 0) {
-      // Calculer l'angle pour atterrir sur le segment gagnant
       const segmentCount = segments.length;
       const segmentAngle = 360 / segmentCount;
       const targetSegment = result;
       const targetAngle = 360 - (targetSegment * segmentAngle + segmentAngle / 2);
-      const spins = 5; // Nombre de tours complets
+      const spins = 5;
       const finalRotation = spins * 360 + targetAngle;
       
       setRotation(finalRotation);
@@ -29,17 +28,16 @@ const AnimatedWheel = ({ segments = [], spinning, onSpinEnd, result }) => {
     }
   }, [spinning, result, segments.length, onSpinEnd]);
   
-  const colors = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
+  const defaultColors = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
   
   if (!segments || segments.length === 0) {
     return (
-      <div className="w-72 h-72 mx-auto flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-white animate-spin" />
+      <div className="w-72 h-72 mx-auto flex items-center justify-center bg-white/5 rounded-full">
+        <div className="text-white/50 text-sm">Chargement...</div>
       </div>
     );
   }
   
-  // Calculer les segments avec angles
   const total = segments.length;
   const segmentAngle = 360 / total;
   
@@ -53,10 +51,11 @@ const AnimatedWheel = ({ segments = [], spinning, onSpinEnd, result }) => {
       {/* Roue */}
       <svg 
         viewBox="0 0 100 100" 
-        className="w-full h-full drop-shadow-xl"
+        className="w-full h-full"
         style={{
           transform: `rotate(${rotation}deg)`,
-          transition: spinning ? 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none'
+          transition: spinning ? 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none',
+          filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'
         }}
       >
         {segments.map((segment, i) => {
@@ -72,39 +71,41 @@ const AnimatedWheel = ({ segments = [], spinning, onSpinEnd, result }) => {
           const y2 = 50 + 45 * Math.sin(endRad);
           
           const largeArc = segmentAngle > 180 ? 1 : 0;
+          const color = segment.color || defaultColors[i % defaultColors.length];
           
           // Position du texte
           const midAngle = (startAngle + segmentAngle / 2) * Math.PI / 180;
-          const textX = 50 + 30 * Math.cos(midAngle);
-          const textY = 50 + 30 * Math.sin(midAngle);
+          const textX = 50 + 28 * Math.cos(midAngle);
+          const textY = 50 + 28 * Math.sin(midAngle);
           const textRotation = startAngle + segmentAngle / 2 + 90;
           
           return (
             <g key={i}>
               <path
                 d={`M 50 50 L ${x1} ${y1} A 45 45 0 ${largeArc} 1 ${x2} ${y2} Z`}
-                fill={segment.color || colors[i % colors.length]}
+                fill={color}
                 stroke="white"
-                strokeWidth="0.5"
+                strokeWidth="1"
               />
               <text
                 x={textX}
                 y={textY}
                 fill="white"
-                fontSize="4"
+                fontSize="5"
                 fontWeight="bold"
                 textAnchor="middle"
                 dominantBaseline="middle"
                 transform={`rotate(${textRotation}, ${textX}, ${textY})`}
-                style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
               >
-                {segment.label?.substring(0, 8)}
+                {(segment.label || '').substring(0, 6)}
               </text>
             </g>
           );
         })}
-        <circle cx="50" cy="50" r="10" fill="white" stroke="#e5e7eb" strokeWidth="1" />
-        <circle cx="50" cy="50" r="6" fill="#f3f4f6" />
+        {/* Centre */}
+        <circle cx="50" cy="50" r="10" fill="white" />
+        <circle cx="50" cy="50" r="7" fill="#f9fafb" />
+        <circle cx="50" cy="50" r="3" fill="#e5e7eb" />
       </svg>
     </div>
   );
