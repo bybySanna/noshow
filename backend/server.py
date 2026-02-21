@@ -3332,34 +3332,37 @@ async def get_wheel_config(user=Depends(get_current_user)):
 
 @api_router.put("/wheel/config")
 async def update_wheel_config(data: dict, user=Depends(get_current_user)):
-    """Met à jour la configuration de la roue"""
+    """Met à jour la configuration de la roue (merge avec existant)"""
     business_id = user.get("business_id")
     if not business_id:
         raise HTTPException(status_code=400, detail="No business")
     
-    # Générer un code unique pour le lien si pas encore créé
+    # Récupérer la config existante pour merge
     existing = await db.wheel_configs.find_one({"business_id": business_id}, {"_id": 0})
+    if not existing:
+        existing = {}
+    
+    # Générer un code unique pour le lien si pas encore créé
     unique_code = existing.get("unique_code") if existing else None
     if not unique_code:
         unique_code = str(uuid.uuid4())[:8].upper()
     
+    # Merge avec les valeurs existantes
     config = {
         "business_id": business_id,
         "unique_code": unique_code,
-        "enabled": data.get("enabled", False),
-        "title": data.get("title", "Roue de la Fortune"),
-        "subtitle": data.get("subtitle", "Tentez votre chance !"),
-        "segments": data.get("segments", []),
-        "tasks_required": data.get("tasks_required", []),
-        "expiry_days": data.get("expiry_days", 30),
-        "max_spins_per_client": data.get("max_spins_per_client", 1),
-        # Nouvelles configurations
-        "social_links": data.get("social_links", {}),
-        "google_review_link": data.get("google_review_link", ""),
-        "cgv_text": data.get("cgv_text", ""),
-        "rules_text": data.get("rules_text", ""),
-        "require_gdpr": data.get("require_gdpr", True),
-        "actions": data.get("actions", []),
+        "enabled": data.get("enabled", existing.get("enabled", False)),
+        "title": data.get("title", existing.get("title", "Roue de la Fortune")),
+        "subtitle": data.get("subtitle", existing.get("subtitle", "Tentez votre chance !")),
+        "segments": data.get("segments", existing.get("segments", [])),
+        "actions": data.get("actions", existing.get("actions", [])),
+        "social_links": data.get("social_links", existing.get("social_links", {})),
+        "google_review_link": data.get("google_review_link", existing.get("google_review_link", "")),
+        "cgv_text": data.get("cgv_text", existing.get("cgv_text", "")),
+        "rules_text": data.get("rules_text", existing.get("rules_text", "")),
+        "require_gdpr": data.get("require_gdpr", existing.get("require_gdpr", True)),
+        "expiry_days": data.get("expiry_days", existing.get("expiry_days", 30)),
+        "max_spins_per_client": data.get("max_spins_per_client", existing.get("max_spins_per_client", 1)),
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
     
