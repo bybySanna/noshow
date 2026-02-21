@@ -3298,8 +3298,10 @@ async def get_wheel_config(user=Depends(get_current_user)):
     
     if not config:
         # Config par défaut
+        unique_code = str(uuid.uuid4())[:8].upper()
         return {
             "enabled": False,
+            "unique_code": unique_code,
             "title": "Roue de la Fortune",
             "subtitle": "Tentez votre chance !",
             "segments": [
@@ -3308,7 +3310,20 @@ async def get_wheel_config(user=Depends(get_current_user)):
                 {"label": "Cadeau", "probability": 10, "color": "#F59E0B", "promo_code": "GIFT"},
                 {"label": "-5%", "probability": 45, "color": "#8B5CF6", "promo_code": "ROUE5"},
             ],
-            "tasks_required": ["google_review"],
+            "actions": [
+                {"key": "google_review", "label": "Laisser un avis Google", "link": "", "required": True, "icon": "star"},
+                {"key": "instagram_follow", "label": "Suivre sur Instagram", "link": "", "required": False, "icon": "instagram"},
+            ],
+            "social_links": {
+                "facebook": "",
+                "instagram": "",
+                "tiktok": "",
+                "whatsapp": ""
+            },
+            "google_review_link": "",
+            "cgv_text": "En participant à ce jeu, vous acceptez nos conditions générales de vente et notre politique de confidentialité.",
+            "rules_text": "1 participation par personne et par jour. Lot à retirer sur présentation du code de validation.",
+            "require_gdpr": True,
             "expiry_days": 30,
             "max_spins_per_client": 1
         }
