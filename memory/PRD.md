@@ -9,9 +9,9 @@ SaaS anti no-show permettant aux entreprises (restaurants, salons, coachs) de r�
 - **Auth**: JWT custom
 - **URL**: https://appointment-armor.preview.emergentagent.com
 
-## Ce qui est implémenté (Session Février 2025)
+## Ce qui est implémenté
 
-### ✅ Phase 1 - Core Features (Complète)
+### Phase 1 - Core Features (Complète)
 - Authentification JWT avec 4 rôles (Super Admin, Business, Staff, Client)
 - CRUD rendez-vous avec statuts (pending, confirmed, cancelled, no_show, completed)
 - Page de confirmation client avec lien unique
@@ -20,70 +20,114 @@ SaaS anti no-show permettant aux entreprises (restaurants, salons, coachs) de r�
 - Gestion clients avec score de fiabilité
 - Analytics et statistiques
 
-### ✅ Phase 2 - ML Scoring & Intégrations (Session courante)
+### Phase 2 - ML Scoring & Intégrations (Complète)
 
 #### Système ML de Scoring No-Show
-- **Algorithme** avec 6 facteurs pondérés :
-  - Historique no-shows (35%)
-  - Taux de confirmation (25%)
-  - Récence (15%)
-  - Pattern de réservation (10%)
-  - Ancienneté client (10%)
-  - Dépôt payé (5%)
-- **Page /ml-scoring** avec distribution des risques
-- **Endpoints**: `/api/ml/risk-overview`, `/api/ml/score-appointment/{id}`
-- **Actions suggérées**: Dépôt obligatoire, rappels supplémentaires
+- Algorithme avec 6 facteurs pondérés
+- Page /ml-scoring avec distribution des risques
+- Endpoints ML pour scoring automatique
 
 #### Import Google Calendar (Simulation)
-- **OAuth flow** simulé pour connexion
-- **Sync automatique** des événements → RDV
-- **Source visible** dans la liste des RDV (badge calendrier)
-- **Statut initial**: Non confirmé → notifications auto
-
-#### Préparation API Externes
-- **TheFork** (LaFourchette) - Structure webhook prête
-- **OpenTable** - Structure webhook prête
-- **API Personnalisée** - Pour systèmes de réservation custom
-- **Mapping automatique** des champs (nom, téléphone, date, nb personnes)
+- OAuth flow simulé pour connexion
+- Sync automatique des événements
 
 #### Templates de Messages Éditables
-- **6 templates par défaut**: Confirmation, Rappel 24h/3h/30min, Annulation, Report
-- **Variables dynamiques**: {{client_name}}, {{date}}, {{time}}, {{business_name}}, etc.
-- **Multi-canaux**: Email, SMS, WhatsApp par template
-- **Prévisualisation** avant envoi
-- **Page /templates** pour personnalisation
+- 6 templates par défaut
+- Variables dynamiques
+- Multi-canaux: Email, SMS, WhatsApp
 
-#### Gestion des Plans Admin (CRUD)
-- **Créer** nouveaux plans
-- **Modifier** prix, limites, fonctionnalités
-- **Supprimer** plans (si non utilisés)
-- **Page /admin/plans** avec interface complète
+### Phase 3 - Notation & Fidélisation (Session 21 Février 2025)
 
-#### Affichage Source RDV
-- **Filtre par source** dans la liste des RDV
-- **Badge visuel** pour identifier la source (Manuel, Google Cal, TheFork, etc.)
-- **Sources supportées**: manual, google_calendar, api_thefork, api_opentable
+#### Système de Notation Clients
+- **Page /client-ratings** pour noter les clients après RDV terminés
+- **4 critères**: Ponctualité, Politesse, Fiabilité, Note globale (1-5 étoiles)
+- **Commentaires** optionnels
+- **Impact ML**: Les notes alimentent le score de risque amélioré
+- **Endpoints**:
+  - `POST /api/appointments/{id}/rate-client`
+  - `GET /api/clients/unrated-appointments`
+  - `GET /api/clients/{phone}/ratings`
+  - `GET /api/ml/enhanced-risk-score/{phone}` (avec notes)
 
-### Services en Mode Simulation
-- **NotificationService**: Queue, retry, logs, templates (prêt pour Twilio)
-- **StripeService**: Abonnements, dépôts (prêt pour Stripe)
-- **CalendarIntegrationService**: Google OAuth, sync (prêt pour vraies clés)
-- **TemplateService**: Gestion templates avec fallback
-- **MLScoringService**: Algorithme de prédiction
+#### Messages de Remerciement
+- **Page /thankyou** avec système de templates
+- **3 templates par défaut**:
+  - Remerciement standard
+  - Fidélité (-10% code promo)
+  - Demande d'avis
+- **Création de templates personnalisés**
+- **Support de liens** dans les messages
+- **Variables dynamiques**: {{client_name}}
+- **Envoi en masse** aux RDV terminés
+- **Historique** des messages envoyés
+- **Endpoints**:
+  - `GET /api/thankyou/templates`
+  - `POST/PUT/DELETE /api/thankyou/templates`
+  - `POST /api/thankyou/bulk-send`
+  - `GET /api/thankyou/history`
+
+#### Système de Chat Interne Admin ↔ Business
+- **Page /admin/messaging** pour Super Admin
+  - Liste des conversations par entreprise
+  - Envoi de messages individuels
+  - **Message groupé** à plusieurs entreprises
+  - Recherche d'entreprises
+  - Suppression de messages
+  - Indicateur de messages non lus
+- **Page /messages** pour Business
+  - Chat avec le support NoShowGone
+  - Onglet Messages + Onglet Notifications
+  - Réponse au support
+  - Indicateur de messages non lus
+- **Notifications Business**
+  - Alertes automatiques lors de messages admin
+  - Marquer comme lu (individuel/tous)
+  - Supprimer notifications (individuel/tous)
+- **Endpoints Admin**:
+  - `GET /api/admin/conversations`
+  - `GET/POST /api/admin/conversations/{business_id}`
+  - `POST /api/admin/conversations/group`
+  - `DELETE /api/admin/conversations/{business_id}/messages/{message_id}`
+  - `GET /api/admin/business-search`
+- **Endpoints Business**:
+  - `GET/POST /api/business/messages`
+  - `GET /api/business/messages/unread-count`
+  - `GET /api/business/notifications`
+  - `PUT /api/business/notifications/{id}/read`
+  - `DELETE /api/business/notifications/{id}`
+  - `PUT /api/business/notifications/read-all`
+  - `DELETE /api/business/notifications` (clear all)
+
+#### Insights Admin "2000% Pertinents"
+- **Endpoint**: `GET /api/admin/insights`
+- **Entreprises à risque**: Taux de no-show > 30%
+- **Top performers**: Meilleur taux de succès
+- **Essais expirant bientôt**: Abonnements trial <7 jours
+- **Messages non lus**: Compteur support
+- **RDV du jour**: Toutes entreprises
+
+#### Dashboard Business - Actions Recommandées
+- **Clients à noter**: Badge sur lien + section d'action
+- **Clients à remercier**: Badge sur lien + section d'action
+- **Messages non lus**: Badge sur lien + section d'action
+- **Quick links** enrichis avec badges de compteurs
 
 ## Structure des Pages
 
 ### Business (/dashboard)
 | Route | Description |
 |-------|-------------|
-| /dashboard | KPIs, quick links |
+| /dashboard | KPIs, actions recommandées |
 | /appointments | Liste RDV + filtre source |
 | /calendar | Vue hebdomadaire |
 | /analytics | Charts, stats |
 | /clients | Gestion clients |
+| /client-ratings | Notation clients après RDV |
+| /thankyou | Messages de remerciement |
 | /ml-scoring | Scoring prédictif ML |
 | /clients-risk | Blacklist, alertes |
 | /notifications | Historique notifs |
+| /messages | Chat avec support + notifications |
 | /templates | Édition messages |
 | /integrations | Google Cal, APIs |
 | /staff | Équipe |
@@ -92,14 +136,15 @@ SaaS anti no-show permettant aux entreprises (restaurants, salons, coachs) de r�
 ### Admin (/admin)
 | Route | Description |
 |-------|-------------|
-| /admin | Dashboard global |
+| /admin | Dashboard + Insights pertinents |
 | /admin/businesses | Gestion entreprises |
-| /admin/plans | CRUD plans (créer/modifier/supprimer) |
+| /admin/messaging | Chat avec entreprises |
+| /admin/plans | CRUD plans |
 | /admin/users | Utilisateurs |
 | /admin/activity | Logs activité |
 | /admin/stats | Analytics plateforme |
 
-## Backlog P0 (Bloqué - Clés API requises)
+## Backlog P0 (Clés API requises)
 - [ ] Intégration Stripe réelle
 - [ ] Intégration Twilio réelle
 - [ ] OAuth Google réel
@@ -119,6 +164,14 @@ SaaS anti no-show permettant aux entreprises (restaurants, salons, coachs) de r�
 - **Admin**: admin@noshow.com / admin123456
 - **Business**: demo@bellanapoli.com / demo123456
 
+## Services en Mode Simulation
+- **NotificationService**: Queue, retry, logs (prêt pour Twilio)
+- **StripeService**: Abonnements, dépôts (prêt pour Stripe)
+- **CalendarIntegrationService**: Google OAuth (prêt pour vraies clés)
+- **MLScoringService**: Algorithme de prédiction amélioré avec notes
+- **ThankYouService**: Templates et envoi (simulé)
+- **InternalChatService**: Messages admin ↔ business (fonctionnel)
+
 ## Structure Code
 ```
 /app/
@@ -134,14 +187,29 @@ SaaS anti no-show permettant aux entreprises (restaurants, salons, coachs) de r�
 │   └── src/
 │       ├── pages/
 │       │   ├── business/
+│       │   │   ├── ClientRatingsPage.js (NEW)
+│       │   │   ├── ThankYouPage.js (NEW)
+│       │   │   ├── BusinessMessagesPage.js (NEW)
 │       │   │   ├── MLScoringPage.js
-│       │   │   ├── IntegrationsPage.js
-│       │   │   ├── TemplatesPage.js
 │       │   │   └── ...
 │       │   └── admin/
-│       │       └── AdminPlans.js (CRUD)
+│       │       ├── AdminMessaging.js (NEW)
+│       │       └── AdminDashboard.js (enhanced)
 │       └── components/
-│           └── BusinessLayout.js
+│           ├── BusinessLayout.js (updated nav)
+│           └── AdminLayout.js (updated nav)
 └── memory/
     └── PRD.md
 ```
+
+## Changelog
+
+### 21 Février 2025
+- Système de notation clients (4 critères)
+- Messages de remerciement avec templates
+- Chat interne Admin ↔ Business bidirectionnel
+- Notifications business avec suppression
+- ML scoring amélioré avec notes clients
+- Insights admin "2000% pertinents"
+- Dashboard business avec actions recommandées
+- Tests: 28/28 backend, 100% frontend
