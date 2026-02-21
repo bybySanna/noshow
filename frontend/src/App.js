@@ -19,6 +19,7 @@ import CalendarPage from './pages/business/CalendarPage';
 import ClientsPage from './pages/business/ClientsPage';
 import IntegrationsPage from './pages/business/IntegrationsPage';
 import MLScoringPage from './pages/business/MLScoringPage';
+import TemplatesPage from './pages/business/TemplatesPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminBusinesses from './pages/admin/AdminBusinesses';
 import AdminPlans from './pages/admin/AdminPlans';
