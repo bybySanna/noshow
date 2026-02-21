@@ -1136,6 +1136,356 @@ async def get_weekly_stats(user=Depends(get_current_user)):
         })
     return result
 
+# ============= PAYMENTS (SIMULATION MODE) =============
+@api_router.post("/payments/subscription")
+async def create_subscription(data: dict, user=Depends(get_current_user)):
+    """Crée un abonnement (simulé)"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    plan = data.get("plan", "solo")
+    
+    # Mode simulation
+    now = datetime.now(timezone.utc)
+    subscription_id = f"sub_sim_{str(uuid.uuid4())[:8]}"
+    
+    await db.businesses.update_one(
+        {"id": business_id},
+        {"$set": {
+            "subscription.plan": plan,
+            "subscription.status": "active",
+            "subscription.stripe_subscription_id": subscription_id,
+            "subscription.started_at": now.isoformat()
+        }}
+    )
+    
+    return {
+        "subscription_id": subscription_id,
+        "plan": plan,
+        "status": "active",
+        "simulation_mode": True,
+        "message": "Abonnement activé (mode simulation)"
+    }
+
+@api_router.post("/payments/cancel-subscription")
+async def cancel_subscription(user=Depends(get_current_user)):
+    """Annule un abonnement (simulé)"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    await db.businesses.update_one(
+        {"id": business_id},
+        {"$set": {
+            "subscription.status": "cancelled",
+            "subscription.cancelled_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {"success": True, "simulation_mode": True}
+
+@api_router.post("/payments/deposit-checkout")
+async def create_deposit_checkout(data: dict, user=Depends(get_current_user)):
+    """Crée une session de paiement pour dépôt (simulé)"""
+    business_id = user.get("business_id")
+    appointment_id = data.get("appointment_id")
+    amount = data.get("amount", 20)
+    
+    session_id = f"cs_sim_{str(uuid.uuid4())[:12]}"
+    
+    deposit = {
+        "id": str(uuid.uuid4()),
+        "session_id": session_id,
+        "appointment_id": appointment_id,
+        "business_id": business_id,
+        "amount": amount,
+        "status": "pending",
+        "simulation_mode": True,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.deposits.insert_one(deposit)
+    
+    return {
+        "session_id": session_id,
+        "checkout_url": f"/api/payments/simulate-deposit/{session_id}",
+        "amount": amount,
+        "simulation_mode": True
+    }
+
+@api_router.get("/payments/simulate-deposit/{session_id}")
+async def simulate_deposit_payment(session_id: str):
+    """Simule le paiement d'un dépôt"""
+    deposit = await db.deposits.find_one({"session_id": session_id}, {"_id": 0})
+    if not deposit:
+        raise HTTPException(status_code=404, detail="Session non trouvée")
+    
+    await db.deposits.update_one(
+        {"session_id": session_id},
+        {"$set": {"status": "succeeded", "paid_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    await db.appointments.update_one(
+        {"id": deposit["appointment_id"]},
+        {"$set": {"deposit_paid": True}}
+    )
+    
+    return {
+        "success": True,
+        "message": "Dépôt payé (simulation)",
+        "amount": deposit["amount"]
+    }
+
+@api_router.get("/payments/stats")
+async def get_payment_stats(user=Depends(get_current_user)):
+    """Stats de paiements pour un business"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    total = await db.deposits.count_documents({"business_id": business_id})
+    paid = await db.deposits.count_documents({"business_id": business_id, "status": "succeeded"})
+    
+    pipeline = [
+        {"$match": {"business_id": business_id, "status": "succeeded"}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+    ]
+    result = await db.deposits.aggregate(pipeline).to_list(1)
+    total_amount = result[0]["total"] if result else 0
+    
+    return {
+        "total_deposits": total,
+        "paid_deposits": paid,
+        "total_amount": total_amount,
+        "conversion_rate": round(paid / total * 100, 1) if total > 0 else 0,
+        "simulation_mode": True
+    }
+
+# ============= PUBLIC STATS (FOR LANDING PAGE) =============
+@api_router.get("/public/stats")
+async def get_public_stats():
+    """Statistiques publiques agrégées et anonymisées pour la landing page"""
+    total_appointments = await db.appointments.count_documents({})
+    confirmed = await db.appointments.count_documents({"status": "confirmed"})
+    completed = await db.appointments.count_documents({"status": "completed"})
+    no_shows = await db.appointments.count_documents({"status": "no_show"})
+    total_businesses = await db.businesses.count_documents({"is_active": True})
+    
+    # Estimation argent économisé (50€ moyenne par RDV honoré)
+    money_saved = (confirmed + completed) * 50
+    
+    # Taux de confirmation
+    confirmation_rate = round((confirmed + completed) / total_appointments * 100, 1) if total_appointments > 0 else 95
+    
+    return {
+        "total_appointments_managed": total_appointments,
+        "money_saved_total": money_saved,
+        "businesses_count": total_businesses,
+        "confirmation_rate": confirmation_rate,
+        "no_show_reduction": 85  # Valeur marketing
+    }
+
+# ============= CALENDAR VIEW =============
+@api_router.get("/appointments/calendar")
+async def get_calendar_appointments(user=Depends(get_current_user), start_date: str = None, end_date: str = None):
+    """RDV formatés pour vue calendrier"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    if not start_date:
+        start_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if not end_date:
+        end_date = (datetime.now(timezone.utc) + timedelta(days=30)).strftime("%Y-%m-%d")
+    
+    appts = await db.appointments.find(
+        {"business_id": business_id, "date": {"$gte": start_date, "$lte": end_date}},
+        {"_id": 0}
+    ).sort([("date", 1), ("time", 1)]).to_list(500)
+    
+    # Grouper par date
+    by_date = {}
+    for appt in appts:
+        date = appt["date"]
+        if date not in by_date:
+            by_date[date] = []
+        by_date[date].append(appt)
+    
+    return {
+        "appointments": appts,
+        "by_date": by_date,
+        "start_date": start_date,
+        "end_date": end_date
+    }
+
+# ============= CLIENT MANAGEMENT =============
+@api_router.get("/clients")
+async def get_clients(user=Depends(get_current_user)):
+    """Liste tous les clients uniques avec leurs stats"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    pipeline = [
+        {"$match": {"business_id": business_id}},
+        {"$group": {
+            "_id": "$client_phone",
+            "client_name": {"$last": "$client_name"},
+            "client_email": {"$last": "$client_email"},
+            "total_appointments": {"$sum": 1},
+            "confirmed": {"$sum": {"$cond": [{"$eq": ["$status", "confirmed"]}, 1, 0]}},
+            "completed": {"$sum": {"$cond": [{"$eq": ["$status", "completed"]}, 1, 0]}},
+            "no_shows": {"$sum": {"$cond": [{"$eq": ["$status", "no_show"]}, 1, 0]}},
+            "cancelled": {"$sum": {"$cond": [{"$eq": ["$status", "cancelled"]}, 1, 0]}},
+            "last_appointment": {"$max": "$date"},
+            "first_appointment": {"$min": "$date"}
+        }},
+        {"$addFields": {
+            "reliability_score": {
+                "$cond": [
+                    {"$gt": ["$total_appointments", 0]},
+                    {"$multiply": [
+                        {"$divide": [
+                            {"$add": ["$confirmed", "$completed"]},
+                            "$total_appointments"
+                        ]},
+                        100
+                    ]},
+                    100
+                ]
+            }
+        }},
+        {"$sort": {"total_appointments": -1}},
+        {"$limit": 200}
+    ]
+    
+    clients = await db.appointments.aggregate(pipeline).to_list(200)
+    
+    return [{
+        "phone": c["_id"],
+        "name": c.get("client_name", ""),
+        "email": c.get("client_email"),
+        "total_appointments": c["total_appointments"],
+        "confirmed": c["confirmed"],
+        "completed": c["completed"],
+        "no_shows": c["no_shows"],
+        "cancelled": c["cancelled"],
+        "reliability_score": round(c.get("reliability_score", 100), 1),
+        "last_appointment": c.get("last_appointment"),
+        "first_appointment": c.get("first_appointment")
+    } for c in clients]
+
+@api_router.get("/clients/{phone}/history")
+async def get_client_history(phone: str, user=Depends(get_current_user)):
+    """Historique complet d'un client"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    appts = await db.appointments.find(
+        {"business_id": business_id, "client_phone": phone},
+        {"_id": 0}
+    ).sort("date", -1).to_list(100)
+    
+    return appts
+
+# ============= NOTIFICATION STATS =============
+@api_router.get("/notifications/stats")
+async def get_notification_stats(user=Depends(get_current_user)):
+    """Stats des notifications"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    total = await db.notifications.count_documents({"business_id": business_id})
+    sent = await db.notifications.count_documents({"business_id": business_id, "status": "sent"})
+    failed = await db.notifications.count_documents({"business_id": business_id, "status": "failed"})
+    pending = await db.notifications.count_documents({"business_id": business_id, "status": {"$in": ["pending", "queued"]}})
+    
+    by_channel = {}
+    for channel in ["email", "sms", "whatsapp"]:
+        count = await db.notifications.count_documents({"business_id": business_id, "channel": channel})
+        by_channel[channel] = count
+    
+    return {
+        "total": total,
+        "sent": sent,
+        "failed": failed,
+        "pending": pending,
+        "success_rate": round(sent / total * 100, 1) if total > 0 else 100,
+        "by_channel": by_channel,
+        "simulation_mode": True
+    }
+
+# ============= ADMIN EXTENDED =============
+@api_router.get("/admin/revenue")
+async def admin_revenue_stats(user=Depends(require_super_admin)):
+    """Stats de revenus pour admin"""
+    plan_prices = {"solo": 29, "pro": 59, "business": 99, "free_trial": 0}
+    
+    pipeline = [
+        {"$group": {
+            "_id": "$subscription.plan",
+            "count": {"$sum": 1}
+        }}
+    ]
+    plans = await db.businesses.aggregate(pipeline).to_list(10)
+    
+    mrr = sum(plan_prices.get(p["_id"], 0) * p["count"] for p in plans)
+    arr = mrr * 12
+    
+    # Churn (mock)
+    total_biz = await db.businesses.count_documents({})
+    cancelled = await db.businesses.count_documents({"subscription.status": "cancelled"})
+    churn_rate = round(cancelled / total_biz * 100, 1) if total_biz > 0 else 0
+    
+    return {
+        "mrr": mrr,
+        "arr": arr,
+        "churn_rate": churn_rate,
+        "total_businesses": total_biz,
+        "cancelled_businesses": cancelled,
+        "plans_breakdown": {p["_id"]: p["count"] for p in plans}
+    }
+
+@api_router.post("/admin/broadcast")
+async def admin_broadcast(data: dict, user=Depends(require_super_admin)):
+    """Envoie un message à tous les business owners"""
+    message = data.get("message")
+    subject = data.get("subject", "Message de NoShowGone")
+    
+    businesses = await db.businesses.find({"is_active": True}, {"_id": 0, "id": 1, "owner_id": 1}).to_list(1000)
+    
+    broadcast = {
+        "id": str(uuid.uuid4()),
+        "type": "broadcast",
+        "subject": subject,
+        "message": message,
+        "sent_to": len(businesses),
+        "sent_by": user["id"],
+        "sent_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.admin_messages.insert_one(broadcast)
+    
+    return {
+        "success": True,
+        "sent_to": len(businesses),
+        "simulation_mode": True,
+        "message": "Broadcast envoyé (simulation)"
+    }
+
+@api_router.get("/admin/system-health")
+async def admin_system_health(user=Depends(require_super_admin)):
+    """État du système"""
+    return {
+        "database": "healthy",
+        "notifications": "simulation_mode",
+        "payments": "simulation_mode",
+        "api": "healthy",
+        "uptime": "99.9%",
+        "last_check": datetime.now(timezone.utc).isoformat()
+    }
+
 # ============= HEALTH CHECK =============
 @api_router.get("/")
 async def root():
