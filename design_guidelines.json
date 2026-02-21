@@ -1,0 +1,159 @@
+{
+  "identity": {
+    "name": "E1",
+    "mission": "Anti-AI Designer",
+    "persona_voice": "Bold, Fusion, Emotion-First, No-Nonsense"
+  },
+  "project_context": {
+    "app_name": "NoShowGone",
+    "description": "SaaS anti no-show web application for restaurants, salons, and coaches.",
+    "platforms": ["Mobile Web (Primary)", "Desktop"],
+    "audience": "Busy small business owners (non-tech savvy)",
+    "emotions": ["Reliable", "Stress-free", "Efficient", "Profitable"],
+    "languages": ["en", "fr"]
+  },
+  "theme_strategy": {
+    "mode": "toggle",
+    "default_mode": "system",
+    "instructions": "Implement a theme toggler (Sun/Moon). Use CSS variables for all colors to ensure seamless switching."
+  },
+  "design_system": {
+    "typography": {
+      "headings": {
+        "family": "Manrope",
+        "weights": ["600", "800"],
+        "usage": "Use for all page titles, card headers, and marketing slogans. Tracking tight (-0.02em)."
+      },
+      "body": {
+        "family": "Outfit",
+        "weights": ["400", "500"],
+        "usage": "Use for all paragraphs, inputs, and data tables. readable on small screens."
+      },
+      "mono": {
+        "family": "JetBrains Mono",
+        "usage": "Use for ID numbers, verification codes, and financial metrics."
+      }
+    },
+    "colors": {
+      "palette_name": "Organic Profit",
+      "primary": {
+        "name": "Forest Green",
+        "light": "#15803d",
+        "dark": "#22c55e",
+        "explanation": "Represents growth, money saved, and reliability. Avoids the generic 'SaaS Blue'."
+      },
+      "secondary": {
+        "name": "Warm Sand",
+        "light": "#f5f5f4",
+        "dark": "#1c1917",
+        "explanation": "Grounds the app in a physical, tangible reality. Not sterile white."
+      },
+      "accent": {
+        "name": "Alert Orange",
+        "light": "#ea580c",
+        "dark": "#f97316",
+        "explanation": "Use for 'No-show' risks and urgent actions."
+      },
+      "neutral": {
+        "light": "#57534e",
+        "dark": "#a8a29e"
+      },
+      "background": {
+        "light": "#ffffff",
+        "dark": "#09090b"
+      }
+    },
+    "spacing": {
+      "scale": "Tailwind",
+      "base_unit": "4px",
+      "strategy": "Mobile-First Dense. Use 'p-4' as default for cards, 'gap-3' for lists. On Desktop, expand to 'p-8'."
+    },
+    "radius": {
+      "default": "0.5rem",
+      "buttons": "9999px (Pill)",
+      "cards": "1rem"
+    },
+    "shadows": {
+      "soft": "0 4px 20px -2px rgba(0, 0, 0, 0.05)",
+      "sharp": "4px 4px 0px 0px rgba(0,0,0,1)"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-primary text-primary-foreground hover:bg-primary/90 rounded-full font-bold shadow-soft transition-all active:scale-95",
+      "secondary": "bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-full font-medium",
+      "ghost": "hover:bg-accent hover:text-accent-foreground rounded-full"
+    },
+    "cards": {
+      "dashboard": "bg-card text-card-foreground rounded-2xl border border-border/50 shadow-sm p-5",
+      "stats": "bg-primary/5 border-none rounded-2xl p-4 flex flex-col justify-between"
+    },
+    "inputs": {
+      "style": "h-12 rounded-xl bg-background border-input focus:ring-2 focus:ring-primary/20 transition-all",
+      "mobile_optimization": "font-size 16px to prevent iOS zoom"
+    },
+    "navigation": {
+      "mobile": "Fixed bottom bar with large touch targets (min 44px). Glassmorphism effect.",
+      "desktop": "Sidebar with clear iconography."
+    }
+  },
+  "layout_patterns": {
+    "mobile_container": "max-w-md mx-auto min-h-screen bg-background relative overflow-hidden",
+    "desktop_container": "max-w-7xl mx-auto px-6",
+    "bento_grid": "grid grid-cols-1 md:grid-cols-4 gap-4",
+    "form_layout": "Single column on mobile. Labels above inputs. Big submit buttons at bottom sticky."
+  },
+  "motion": {
+    "library": "framer-motion",
+    "instructions": "Use 'AnimatePresence' for page transitions. Use 'layout' prop for list reordering.",
+    "micro_interactions": "Buttons scale down 0.95 on click. Toggles have spring physics.",
+    "reduced_motion": "Respect 'prefers-reduced-motion'."
+  },
+  "assets": {
+    "icons": {
+      "library": "lucide-react",
+      "style": "Stroke width 1.5px or 2px. Rounded line joins.",
+      "banned": "Emojis"
+    },
+    "images": [
+      {
+        "category": "marketing_hero",
+        "url": "https://images.unsplash.com/photo-1721218900531-b95907298494?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODd8MHwxfHNlYXJjaHwxfHxidXN5JTIwcmVzdGF1cmFudCUyMG93bmVyJTIwdXNpbmclMjBwaG9uZXxlbnwwfHx8fDE3NzE2NzE5MjJ8MA&ixlib=rb-4.1.0&q=85",
+        "alt": "Busy restaurant owner managing appointments on phone",
+        "placement": "Landing Page Hero"
+      },
+      {
+        "category": "salon_context",
+        "url": "https://images.pexels.com/photos/853427/pexels-photo-853427.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "alt": "Modern salon interior",
+        "placement": "Features Section / Onboarding"
+      },
+      {
+        "category": "coach_context",
+        "url": "https://images.pexels.com/photos/3727511/pexels-photo-3727511.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "alt": "Business coach working",
+        "placement": "Testimonials / Use Cases"
+      }
+    ]
+  },
+  "universal_guidelines": [
+    "Do not use generic 'Inter' font for headings.",
+    "Avoid purple/violet gradients.",
+    "Mobile-first: Touch targets must be at least 44x44px.",
+    "Use 'sonner' for all toast notifications.",
+    "All interactive elements must have 'data-testid'.",
+    "Use Shadcn components from '/app/frontend/src/components/ui/'.",
+    "Bilingual support: Ensure UI can handle text expansion for French (approx 1.2x length of English).",
+    "Components are in .jsx format. Import them correctly.",
+    "Do NOT use 'transparent' backgrounds for dropdowns/headers that overlay content.",
+    "Use 'Forest Green' (#15803d) for success/primary actions to emphasize money saved."
+  ],
+  "implementation_steps": [
+    "1. Configure Tailwind colors in 'tailwind.config.js' with the new palette.",
+    "2. Set up the 'Manrope' and 'Outfit' fonts in 'index.css'.",
+    "3. Create the 'Layout' component with Mobile/Desktop responsive logic.",
+    "4. Build the 'Auth' pages (Login/Register) with the new visual style.",
+    "5. Develop the 'Dashboard' shell with the Bottom Nav (Mobile) and Sidebar (Desktop).",
+    "6. Implement the 'Appointment' booking flow (Wizard style)."
+  ]
+}
