@@ -156,6 +156,7 @@ export default function PublicWheelPage() {
       const response = await axios.get(`${API}/wheel/${code}/public`);
       setConfig(response.data);
     } catch (err) {
+      console.error('Wheel fetch error:', err);
       setError(err.response?.data?.detail || 'Cette roue n\'est pas disponible');
     } finally {
       setLoading(false);
