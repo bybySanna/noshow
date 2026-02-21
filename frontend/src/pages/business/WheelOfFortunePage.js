@@ -313,11 +313,34 @@ export default function WheelOfFortunePage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const tasks = [
-    { key: 'google_review', label_fr: 'Laisser un avis Google', label_en: 'Leave a Google review' },
-    { key: 'social_follow', label_fr: 'Suivre sur les réseaux', label_en: 'Follow on social media' },
-    { key: 'newsletter', label_fr: 'S\'inscrire à la newsletter', label_en: 'Subscribe to newsletter' },
-    { key: 'none', label_fr: 'Aucune (accès direct)', label_en: 'None (direct access)' },
+  const addAction = () => {
+    const actions = config.actions || [];
+    setConfig({
+      ...config,
+      actions: [
+        ...actions,
+        { key: `action_${Date.now()}`, label: '', link: '', required: false, icon: 'star' }
+      ]
+    });
+  };
+
+  const updateAction = (index, newAction) => {
+    const actions = [...(config.actions || [])];
+    actions[index] = newAction;
+    setConfig({ ...config, actions });
+  };
+
+  const deleteAction = (index) => {
+    const actions = (config.actions || []).filter((_, i) => i !== index);
+    setConfig({ ...config, actions });
+  };
+
+  const actionIcons = [
+    { key: 'star', label: 'Avis', Icon: Star },
+    { key: 'instagram', label: 'Instagram', Icon: Instagram },
+    { key: 'facebook', label: 'Facebook', Icon: Facebook },
+    { key: 'whatsapp', label: 'WhatsApp', Icon: MessageCircle },
+    { key: 'link', label: 'Lien', Icon: ExternalLink },
   ];
 
   return (
@@ -337,9 +360,12 @@ export default function WheelOfFortunePage() {
       {/* Tabs */}
       <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
         {[
-          { key: 'config', icon: Settings, label_fr: 'Configuration', label_en: 'Configuration' },
-          { key: 'preview', icon: Play, label_fr: 'Aperçu', label_en: 'Preview' },
-          { key: 'stats', icon: BarChart2, label_fr: 'Statistiques', label_en: 'Statistics' },
+          { key: 'config', icon: Settings, label_fr: 'Segments', label_en: 'Segments' },
+          { key: 'actions', icon: CheckCircle, label_fr: 'Actions', label_en: 'Actions' },
+          { key: 'link', icon: QrCode, label_fr: 'Lien & QR', label_en: 'Link & QR' },
+          { key: 'legal', icon: FileText, label_fr: 'CGV & Règles', label_en: 'Terms & Rules' },
+          { key: 'validations', icon: Check, label_fr: 'Validations', label_en: 'Validations' },
+          { key: 'stats', icon: BarChart2, label_fr: 'Stats', label_en: 'Stats' },
         ].map((tab) => (
           <Button
             key={tab.key}
