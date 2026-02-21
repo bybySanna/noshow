@@ -3602,30 +3602,101 @@ async def redeem_wheel_prize(data: dict, user=Depends(get_current_user)):
     
     promo_code = data.get("promo_code")
     spin_id = data.get("spin_id")
+    validation_code = data.get("validation_code")
     
-    query = {"business_id": business_id, "redeemed": False}
+    query = {"business_id": business_id, "status": {"$ne": "validated"}}
     if spin_id:
         query["id"] = spin_id
+    elif validation_code:
+        query["validation_code"] = validation_code
     elif promo_code:
         query["promo_code"] = promo_code
     else:
-        raise HTTPException(status_code=400, detail="spin_id ou promo_code requis")
+        raise HTTPException(status_code=400, detail="spin_id, validation_code ou promo_code requis")
     
     spin = await db.wheel_spins.find_one(query, {"_id": 0})
     if not spin:
-        raise HTTPException(status_code=404, detail="Gain non trouvé ou déjà utilisé")
+        raise HTTPException(status_code=404, detail="Gain non trouvé ou déjà validé")
     
     # Vérifier expiration
     expiry = datetime.fromisoformat(spin["expiry_date"].replace("Z", "+00:00"))
     if datetime.now(timezone.utc) > expiry:
+        await db.wheel_spins.update_one(
+            {"id": spin["id"]},
+            {"$set": {"status": "expired"}}
+        )
         raise HTTPException(status_code=400, detail="Ce gain a expiré")
     
     await db.wheel_spins.update_one(
         {"id": spin["id"]},
-        {"$set": {"redeemed": True, "redeemed_at": datetime.now(timezone.utc).isoformat()}}
+        {"$set": {
+            "status": "validated",
+            "redeemed": True, 
+            "validated_at": datetime.now(timezone.utc).isoformat(),
+            "validated_by": user.get("id")
+        }}
     )
     
-    return {"success": True, "prize": spin["prize_label"]}
+    return {"success": True, "prize": spin["prize_label"], "client_name": spin.get("client_name", "")}
+
+@api_router.get("/wheel/redemptions")
+async def get_wheel_redemptions(user=Depends(get_current_user), status: str = None):
+    """Liste des gains à valider/validés"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    query = {"business_id": business_id}
+    if status:
+        query["status"] = status
+    
+    spins = await db.wheel_spins.find(
+        query,
+        {"_id": 0}
+    ).sort("created_at", -1).limit(100).to_list(100)
+    
+    # Mettre à jour les statuts expirés
+    now = datetime.now(timezone.utc)
+    for spin in spins:
+        if spin.get("status") == "pending":
+            expiry = datetime.fromisoformat(spin["expiry_date"].replace("Z", "+00:00"))
+            if now > expiry:
+                spin["status"] = "expired"
+                await db.wheel_spins.update_one(
+                    {"id": spin["id"]},
+                    {"$set": {"status": "expired"}}
+                )
+    
+    return {"redemptions": spins}
+
+@api_router.get("/wheel/link-info")
+async def get_wheel_link_info(user=Depends(get_current_user)):
+    """Récupère les infos du lien et QR code"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    config = await db.wheel_configs.find_one({"business_id": business_id}, {"_id": 0})
+    
+    if not config or not config.get("unique_code"):
+        # Générer un code si pas encore créé
+        unique_code = str(uuid.uuid4())[:8].upper()
+        await db.wheel_configs.update_one(
+            {"business_id": business_id},
+            {"$set": {"unique_code": unique_code}},
+            upsert=True
+        )
+    else:
+        unique_code = config.get("unique_code")
+    
+    frontend_url = os.environ.get("REACT_APP_BACKEND_URL", "").replace("/api", "")
+    wheel_url = f"{frontend_url}/play/{unique_code}"
+    
+    return {
+        "unique_code": unique_code,
+        "wheel_url": wheel_url,
+        "qr_data": wheel_url  # Le frontend génèrera le QR code
+    }
 
 # ============= EMAIL SERVICE =============
 @api_router.post("/email/send")
