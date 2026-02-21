@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Calendar, LayoutDashboard, Building2, Users, BarChart2, Bell, CreditCard, Activity, LogOut, Sun, Moon, ChevronRight } from 'lucide-react';
+import { Calendar, LayoutDashboard, Building2, Users, BarChart2, Bell, CreditCard, Activity, LogOut, Sun, Moon, ChevronRight, MessageSquare, Lightbulb } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LangContext';
 import { useTheme } from '../context/ThemeContext';
@@ -9,6 +9,7 @@ import { cn } from '../lib/utils';
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label_fr: 'Dashboard', label_en: 'Dashboard', exact: true },
   { to: '/admin/businesses', icon: Building2, label_fr: 'Entreprises', label_en: 'Businesses' },
+  { to: '/admin/messaging', icon: MessageSquare, label_fr: 'Messagerie', label_en: 'Messaging' },
   { to: '/admin/plans', icon: CreditCard, label_fr: 'Plans & Prix', label_en: 'Plans & Pricing' },
   { to: '/admin/users', icon: Users, label_fr: 'Utilisateurs', label_en: 'Users' },
   { to: '/admin/activity', icon: Activity, label_fr: 'Activité', label_en: 'Activity' },
