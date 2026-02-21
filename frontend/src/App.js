@@ -93,6 +93,8 @@ function AppRoutes() {
       <Route path="/client-ratings" element={<ProtectedRoute roles={['business_owner']}><ClientRatingsPage /></ProtectedRoute>} />
       <Route path="/thankyou" element={<ProtectedRoute roles={['business_owner']}><ThankYouPage /></ProtectedRoute>} />
       <Route path="/messages" element={<ProtectedRoute roles={['business_owner']}><BusinessMessagesPage /></ProtectedRoute>} />
+      <Route path="/automation" element={<ProtectedRoute roles={['business_owner']}><AutomationPage /></ProtectedRoute>} />
+      <Route path="/setup" element={<ProtectedRoute roles={['business_owner']}><BusinessOnboardingPage /></ProtectedRoute>} />
 
       {/* Super Admin */}
       <Route path="/admin" element={<ProtectedRoute roles={['super_admin']}><AdminDashboard /></ProtectedRoute>} />
