@@ -59,14 +59,15 @@ const CreditGauge = ({ label, icon: Icon, usage, limit, remaining, usagePercent,
   );
 };
 
-const PackCard = ({ pack, quantity, price, onPurchase, loading }) => {
+const PackCard = ({ pack, quantity, price, onPurchase, loading, useStripe }) => {
   const { lang } = useLang();
   
   return (
     <button
       onClick={() => onPurchase(pack)}
       disabled={loading}
-      className="p-4 bg-muted/50 rounded-xl border border-border hover:border-primary/30 transition-all text-left"
+      className="p-4 bg-muted/50 rounded-xl border border-border hover:border-primary/30 transition-all text-left group"
+      data-testid={`pack-${pack}`}
     >
       <div className="flex items-center justify-between mb-2">
         <span className="font-heading font-700">{quantity}</span>
@@ -75,6 +76,11 @@ const PackCard = ({ pack, quantity, price, onPurchase, loading }) => {
       <p className="text-xs text-muted-foreground">
         {(price / quantity / 100).toFixed(3)}€/{lang === 'fr' ? 'unité' : 'unit'}
       </p>
+      {useStripe && (
+        <p className="text-xs text-primary mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          {lang === 'fr' ? '→ Payer avec Stripe' : '→ Pay with Stripe'}
+        </p>
+      )}
     </button>
   );
 };
