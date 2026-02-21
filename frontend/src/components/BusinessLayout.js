@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Calendar, LayoutDashboard, Users, Settings, BarChart2, Bell, LogOut, Sun, Moon, AlertTriangle, CalendarDays, UserCircle } from 'lucide-react';
+import { Calendar, LayoutDashboard, Users, Settings, BarChart2, Bell, LogOut, Sun, Moon, AlertTriangle, CalendarDays, UserCircle, Link2, Brain } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LangContext';
 import { useTheme } from '../context/ThemeContext';
@@ -12,8 +12,10 @@ const navItems = [
   { to: '/calendar', icon: CalendarDays, label_fr: 'Calendrier', label_en: 'Calendar', key: 'calendar' },
   { to: '/analytics', icon: BarChart2, key: 'analytics' },
   { to: '/clients', icon: UserCircle, label_fr: 'Clients', label_en: 'Clients', key: 'clients' },
+  { to: '/ml-scoring', icon: Brain, label_fr: 'Scoring ML', label_en: 'ML Scoring', key: 'mlscoring' },
   { to: '/clients-risk', icon: AlertTriangle, label_fr: 'Risques', label_en: 'Risks', key: 'risks' },
   { to: '/notifications', icon: Bell, key: 'notifications' },
+  { to: '/integrations', icon: Link2, label_fr: 'Intégrations', label_en: 'Integrations', key: 'integrations' },
   { to: '/staff', icon: Users, key: 'staff' },
   { to: '/settings', icon: Settings, key: 'settings' },
 ];
