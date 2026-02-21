@@ -80,6 +80,8 @@ function AppRoutes() {
       <Route path="/clients-risk" element={<ProtectedRoute roles={['business_owner']}><ClientsRiskPage /></ProtectedRoute>} />
       <Route path="/calendar" element={<ProtectedRoute roles={['business_owner']}><CalendarPage /></ProtectedRoute>} />
       <Route path="/clients" element={<ProtectedRoute roles={['business_owner']}><ClientsPage /></ProtectedRoute>} />
+      <Route path="/integrations" element={<ProtectedRoute roles={['business_owner']}><IntegrationsPage /></ProtectedRoute>} />
+      <Route path="/ml-scoring" element={<ProtectedRoute roles={['business_owner']}><MLScoringPage /></ProtectedRoute>} />
 
       {/* Super Admin */}
       <Route path="/admin" element={<ProtectedRoute roles={['super_admin']}><AdminDashboard /></ProtectedRoute>} />
