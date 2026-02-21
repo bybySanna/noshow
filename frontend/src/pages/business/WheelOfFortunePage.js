@@ -166,48 +166,95 @@ export default function WheelOfFortunePage() {
       { label: 'Cadeau', probability: 10, color: '#F59E0B', promo_code: 'GIFT' },
       { label: '-5%', probability: 45, color: '#8B5CF6', promo_code: 'ROUE5' },
     ],
-    tasks_required: ['google_review'],
+    actions: [],
+    social_links: { facebook: '', instagram: '', tiktok: '', whatsapp: '' },
+    google_review_link: '',
+    cgv_text: '',
+    rules_text: '',
+    require_gdpr: true,
     expiry_days: 30,
     max_spins_per_client: 1,
   });
   const [stats, setStats] = useState({ total_spins: 0, redemptions: 0, conversion_rate: 0 });
   const [wheelUrl, setWheelUrl] = useState('');
+  const [uniqueCode, setUniqueCode] = useState('');
   const [spinning, setSpinning] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [redemptions, setRedemptions] = useState([]);
+  const [redemptionFilter, setRedemptionFilter] = useState('pending');
 
   useEffect(() => {
     fetchConfig();
   }, []);
 
+  useEffect(() => {
+    if (activeTab === 'validations') {
+      fetchRedemptions();
+    }
+  }, [activeTab, redemptionFilter]);
+
   const fetchConfig = async () => {
     try {
       const response = await axios.get(`${API}/wheel/config`);
-      if (response.data && response.data.segments) {
-        setConfig(response.data);
+      if (response.data) {
+        setConfig({ ...config, ...response.data });
+        if (response.data.unique_code) {
+          setUniqueCode(response.data.unique_code);
+          setWheelUrl(`${window.location.origin}/play/${response.data.unique_code}`);
+        }
       }
       
       const statsRes = await axios.get(`${API}/wheel/stats`);
       setStats(statsRes.data);
       
-      // Générer l'URL de la roue
-      const business = await axios.get(`${API}/businesses/me`);
-      setWheelUrl(`${window.location.origin}/wheel/${business.data.id}`);
+      // Récupérer le lien
+      try {
+        const linkRes = await axios.get(`${API}/wheel/link-info`);
+        if (linkRes.data.unique_code) {
+          setUniqueCode(linkRes.data.unique_code);
+          setWheelUrl(`${window.location.origin}/play/${linkRes.data.unique_code}`);
+        }
+      } catch (e) {}
     } catch (err) {
-      // Configuration par défaut si pas encore créée
+      // Configuration par défaut
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchRedemptions = async () => {
+    try {
+      const response = await axios.get(`${API}/wheel/redemptions?status=${redemptionFilter}`);
+      setRedemptions(response.data.redemptions || []);
+    } catch (err) {
+      console.error(err);
     }
   };
 
   const saveConfig = async () => {
     setSaving(true);
     try {
-      await axios.put(`${API}/wheel/config`, config);
+      const response = await axios.put(`${API}/wheel/config`, config);
+      if (response.data.unique_code) {
+        setUniqueCode(response.data.unique_code);
+        setWheelUrl(`${window.location.origin}/play/${response.data.unique_code}`);
+      }
       toast.success(lang === 'fr' ? 'Configuration sauvegardée !' : 'Configuration saved!');
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Erreur');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const validateRedemption = async (validationCode) => {
+    try {
+      await axios.post(`${API}/wheel/redeem`, { validation_code: validationCode });
+      toast.success(lang === 'fr' ? 'Gain validé !' : 'Prize validated!');
+      fetchRedemptions();
+      fetchConfig(); // Refresh stats
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erreur');
     }
   };
 
