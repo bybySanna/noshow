@@ -10,30 +10,39 @@ import { toast } from 'sonner';
 // Composant de roue visuelle
 const WheelPreview = ({ segments, spinning }) => {
   const total = segments.reduce((sum, s) => sum + (s.probability || 1), 0);
-  let currentAngle = 0;
+  
+  // Calculer les angles cumulatifs
+  const segmentsWithAngles = [];
+  let cumulativeAngle = 0;
+  segments.forEach((segment, i) => {
+    const angle = (segment.probability || 1) / total * 360;
+    segmentsWithAngles.push({
+      ...segment,
+      startAngle: cumulativeAngle,
+      endAngle: cumulativeAngle + angle
+    });
+    cumulativeAngle += angle;
+  });
+  
+  const colors = [
+    '#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', 
+    '#EC4899', '#14B8A6', '#F97316'
+  ];
   
   return (
     <div className="relative w-64 h-64 mx-auto">
       <svg viewBox="0 0 100 100" className={`w-full h-full ${spinning ? 'animate-spin' : ''}`} style={{ animationDuration: '3s' }}>
-        {segments.map((segment, i) => {
-          const angle = (segment.probability || 1) / total * 360;
-          const startAngle = currentAngle;
-          currentAngle += angle;
-          
-          const startRad = (startAngle - 90) * Math.PI / 180;
-          const endRad = (currentAngle - 90) * Math.PI / 180;
+        {segmentsWithAngles.map((segment, i) => {
+          const startRad = (segment.startAngle - 90) * Math.PI / 180;
+          const endRad = (segment.endAngle - 90) * Math.PI / 180;
           
           const x1 = 50 + 45 * Math.cos(startRad);
           const y1 = 50 + 45 * Math.sin(startRad);
           const x2 = 50 + 45 * Math.cos(endRad);
           const y2 = 50 + 45 * Math.sin(endRad);
           
+          const angle = segment.endAngle - segment.startAngle;
           const largeArc = angle > 180 ? 1 : 0;
-          
-          const colors = [
-            '#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', 
-            '#EC4899', '#14B8A6', '#F97316'
-          ];
           
           return (
             <path
