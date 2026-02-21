@@ -17,6 +17,8 @@ import NotificationsPage from './pages/business/NotificationsPage';
 import ClientsRiskPage from './pages/business/ClientsRiskPage';
 import CalendarPage from './pages/business/CalendarPage';
 import ClientsPage from './pages/business/ClientsPage';
+import IntegrationsPage from './pages/business/IntegrationsPage';
+import MLScoringPage from './pages/business/MLScoringPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminBusinesses from './pages/admin/AdminBusinesses';
 import AdminPlans from './pages/admin/AdminPlans';
