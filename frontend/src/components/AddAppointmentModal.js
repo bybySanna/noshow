@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Phone, Mail, Clock, FileText } from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Textarea } from '../components/ui/textarea';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
 import { useLang } from '../context/LangContext';
 import axios from 'axios';
 import { API } from '../context/AuthContext';
