@@ -2089,8 +2089,12 @@ async def get_thankyou_templates(user=Depends(get_current_user)):
             }
         ]
         for t in default_templates:
-            await db.thankyou_templates.insert_one(t)
-        templates = default_templates
+            await db.thankyou_templates.insert_one({**t})
+        # Re-fetch to get clean data without _id
+        templates = await db.thankyou_templates.find(
+            {"business_id": business_id},
+            {"_id": 0}
+        ).to_list(20)
     
     return templates
 
