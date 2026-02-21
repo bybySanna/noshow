@@ -1150,51 +1150,6 @@ async def get_risk_scores(user=Depends(get_current_user)):
         })
     return clients
 
-@api_router.post("/appointments/bulk-status")
-async def bulk_update_status(data: dict, user=Depends(get_current_user)):
-    business_id = user.get("business_id")
-    if not business_id:
-        raise HTTPException(status_code=400, detail="No business")
-    ids = data.get("ids", [])
-    new_status = data.get("status")
-    if not ids or not new_status:
-        raise HTTPException(status_code=400, detail="ids and status required")
-    await db.appointments.update_many(
-        {"id": {"$in": ids}, "business_id": business_id},
-        {"$set": {"status": new_status}}
-    )
-    return {"updated": len(ids)}
-
-@api_router.get("/appointments/export")
-async def export_appointments(user=Depends(get_current_user)):
-    business_id = user.get("business_id")
-    if not business_id:
-        raise HTTPException(status_code=400, detail="No business")
-    appts = await db.appointments.find({"business_id": business_id}, {"_id": 0}).sort("date", -1).to_list(1000)
-    return {"appointments": appts, "total": len(appts), "exported_at": datetime.now(timezone.utc).isoformat()}
-
-@api_router.get("/appointments/today")
-async def get_today_appointments(user=Depends(get_current_user)):
-    business_id = user.get("business_id")
-    if not business_id:
-        raise HTTPException(status_code=400, detail="No business")
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    appts = await db.appointments.find({"business_id": business_id, "date": today}, {"_id": 0}).sort("time", 1).to_list(100)
-    return appts
-
-@api_router.get("/appointments/upcoming")
-async def get_upcoming_appointments(user=Depends(get_current_user), days: int = 7):
-    business_id = user.get("business_id")
-    if not business_id:
-        raise HTTPException(status_code=400, detail="No business")
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    end_date = (datetime.now(timezone.utc) + timedelta(days=days)).strftime("%Y-%m-%d")
-    appts = await db.appointments.find(
-        {"business_id": business_id, "date": {"$gte": today, "$lte": end_date}},
-        {"_id": 0}
-    ).sort([("date", 1), ("time", 1)]).to_list(200)
-    return appts
-
 @api_router.get("/stats/business/weekly")
 async def get_weekly_stats(user=Depends(get_current_user)):
     business_id = user.get("business_id")
