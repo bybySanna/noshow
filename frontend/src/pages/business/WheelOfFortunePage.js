@@ -961,72 +961,8 @@ export default function WheelOfFortunePage() {
               </div>
             </div>
           )}
-              </div>
 
-              {/* Save button */}
-              <div className="flex justify-end">
-                <Button onClick={saveConfig} disabled={saving} className="rounded-xl" data-testid="save-config">
-                  <Save className="w-4 h-4 mr-2" />
-                  {saving 
-                    ? (lang === 'fr' ? 'Sauvegarde...' : 'Saving...') 
-                    : (lang === 'fr' ? 'Sauvegarder' : 'Save')}
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'preview' && (
-            <div className="space-y-6">
-              <div className="bg-card rounded-xl p-6 border border-border text-center">
-                <h2 className="text-xl font-heading font-800 mb-2">{config.title}</h2>
-                <p className="text-muted-foreground mb-6">{config.subtitle}</p>
-                
-                <WheelPreview segments={config.segments} spinning={spinning} />
-                
-                <Button 
-                  onClick={testSpin}
-                  disabled={spinning}
-                  className="mt-6 rounded-xl"
-                  size="lg"
-                  data-testid="test-spin"
-                >
-                  {spinning ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                      {lang === 'fr' ? 'En cours...' : 'Spinning...'}
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-4 h-4 mr-2" />
-                      {lang === 'fr' ? 'Tester la roue' : 'Test spin'}
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              {/* Legend */}
-              <div className="bg-card rounded-xl p-5 border border-border">
-                <h3 className="font-heading font-700 mb-4">
-                  {lang === 'fr' ? 'Légende des prix' : 'Prize Legend'}
-                </h3>
-                <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3">
-                  {config.segments.map((seg, i) => (
-                    <div key={i} className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
-                      <div 
-                        className="w-4 h-4 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: seg.color }}
-                      />
-                      <div>
-                        <p className="font-heading font-600 text-sm">{seg.label}</p>
-                        <p className="text-xs text-muted-foreground">{seg.probability}%</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
+          {/* STATS TAB */}
           {activeTab === 'stats' && (
             <div className="space-y-6">
               {/* KPIs */}
@@ -1039,7 +975,7 @@ export default function WheelOfFortunePage() {
                     <div>
                       <p className="text-2xl font-heading font-800">{stats.total_spins}</p>
                       <p className="text-xs text-muted-foreground">
-                        {lang === 'fr' ? 'Tours joués' : 'Total spins'}
+                        {lang === 'fr' ? 'Participations' : 'Total plays'}
                       </p>
                     </div>
                   </div>
@@ -1053,7 +989,7 @@ export default function WheelOfFortunePage() {
                     <div>
                       <p className="text-2xl font-heading font-800">{stats.redemptions}</p>
                       <p className="text-xs text-muted-foreground">
-                        {lang === 'fr' ? 'Gains utilisés' : 'Prizes redeemed'}
+                        {lang === 'fr' ? 'Gains validés' : 'Prizes validated'}
                       </p>
                     </div>
                   </div>
@@ -1067,7 +1003,7 @@ export default function WheelOfFortunePage() {
                     <div>
                       <p className="text-2xl font-heading font-800">{stats.conversion_rate}%</p>
                       <p className="text-xs text-muted-foreground">
-                        {lang === 'fr' ? 'Taux de conversion' : 'Conversion rate'}
+                        {lang === 'fr' ? 'Taux de validation' : 'Validation rate'}
                       </p>
                     </div>
                   </div>
@@ -1077,13 +1013,13 @@ export default function WheelOfFortunePage() {
               {/* Info */}
               <div className="bg-gradient-to-r from-primary/10 to-purple-500/10 rounded-xl p-5 border border-primary/20">
                 <h3 className="font-heading font-700 mb-2">
-                  {lang === 'fr' ? 'Comment ça marche ?' : 'How does it work?'}
+                  {lang === 'fr' ? 'Comment utiliser la Roue de la Fortune ?' : 'How to use the Wheel of Fortune?'}
                 </h3>
                 <ul className="text-sm text-muted-foreground space-y-2">
-                  <li>1. {lang === 'fr' ? 'Configurez vos segments et probabilités' : 'Configure your segments and probabilities'}</li>
-                  <li>2. {lang === 'fr' ? 'Partagez le lien dans vos messages post-RDV' : 'Share the link in your post-appointment messages'}</li>
-                  <li>3. {lang === 'fr' ? 'Les clients accomplissent la tâche (ex: avis Google) puis jouent' : 'Customers complete the task (e.g., Google review) then play'}</li>
-                  <li>4. {lang === 'fr' ? 'Ils reçoivent un code promo à utiliser' : 'They receive a promo code to use'}</li>
+                  <li>1. {lang === 'fr' ? 'Configurez vos segments et leurs probabilités' : 'Configure your segments and their probabilities'}</li>
+                  <li>2. {lang === 'fr' ? 'Définissez les actions à accomplir (avis Google, follow réseaux...)' : 'Define actions to complete (Google review, social follow...)'}</li>
+                  <li>3. {lang === 'fr' ? 'Partagez le lien ou QR code avec vos clients' : 'Share the link or QR code with your customers'}</li>
+                  <li>4. {lang === 'fr' ? 'Validez les gains présentés par les clients' : 'Validate prizes presented by customers'}</li>
                 </ul>
               </div>
             </div>
