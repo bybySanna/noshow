@@ -1,0 +1,131 @@
+{
+  "summary": "Iteration 3 testing completed. All new features working - ML Scoring, Calendar Integrations, External APIs (TheFork/OpenTable), Admin Plans CRUD. 23/23 backend tests passed. All UI flows verified.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "/api/admin/plans",
+        "issue": "Duplicate routes exist - old routes (lines 945-979) use db.plans_config, new routes (lines 1671-1760) use db.plans. Old routes take priority due to FastAPI routing order.",
+        "impact": "Low - functionality works, but plans data may be split between two collections",
+        "recommendation": "Consolidate to single collection (db.plans) and remove duplicate route definitions"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "features_tested": {
+    "ml_scoring": {
+      "page": "/ml-scoring",
+      "status": "WORKING",
+      "api_endpoints": ["/api/ml/risk-overview", "/api/ml/score-appointment/{id}", "/api/ml/risk-score/{phone}"],
+      "features": [
+        "Risk overview with stats (upcoming RDV, avg score, at risk, reliable)",
+        "Risk distribution chart (very_low/low/medium/high/very_high)",
+        "High-risk appointments list with clickable details",
+        "Score detail modal with factors and recommendations",
+        "Refresh button for real-time updates",
+        "ML explanation section"
+      ]
+    },
+    "calendar_integrations": {
+      "page": "/integrations",
+      "status": "WORKING",
+      "api_endpoints": ["/api/calendar/google/auth-url", "/api/calendar/google/callback-simulate", "/api/calendar/google/sync", "/api/calendar/connections"],
+      "features": [
+        "Google Calendar connect (simulation mode)",
+        "Calendar sync with RDV import",
+        "Disconnect calendar",
+        "Outlook/iCal coming soon indicators"
+      ]
+    },
+    "external_api_integrations": {
+      "page": "/integrations",
+      "status": "WORKING",
+      "api_endpoints": ["/api/external-api/register", "/api/external-api/connections", "/api/webhooks/{platform}/{business_id}"],
+      "features": [
+        "TheFork API registration with webhook URL",
+        "OpenTable API registration",
+        "Custom API configuration",
+        "Webhook payload processing"
+      ]
+    },
+    "admin_plans_crud": {
+      "page": "/admin/plans",
+      "status": "WORKING",
+      "api_endpoints": ["POST /api/admin/plans", "PUT /api/admin/plans/{id}", "DELETE /api/admin/plans/{id}", "GET /api/admin/plans"],
+      "features": [
+        "List all plans with limits and features",
+        "Create new plan with full form (name, price, limits, features, color, trial days)",
+        "Edit existing plan inline",
+        "Delete plan with confirmation (blocks if businesses using plan)",
+        "Plan active/inactive toggle"
+      ]
+    },
+    "navigation": {
+      "status": "WORKING",
+      "sidebar_items": ["Tableau de bord", "Rendez-vous", "Calendrier", "Statistiques", "Clients", "Scoring ML", "Risques", "Notifications", "Intégrations", "Équipe", "Paramètres"],
+      "dashboard_quick_links": ["Calendrier", "Statistiques", "Mes Clients", "Clients à risque", "Notifications", "Équipe"]
+    }
+  },
+  "backend_tests_passed": [
+    "API health check",
+    "Admin login",
+    "Business owner login",
+    "ML risk overview",
+    "ML score appointment",
+    "ML risk score by phone",
+    "Get calendar connections",
+    "Google auth URL generation",
+    "Google callback simulation",
+    "Google Calendar sync",
+    "Disconnect calendar",
+    "Get external API connections",
+    "Register TheFork API",
+    "Register OpenTable API",
+    "TheFork webhook processing",
+    "Get admin plans",
+    "Create plan",
+    "Update plan",
+    "Delete plan",
+    "Verify plan deleted",
+    "Business me endpoint",
+    "Appointments today",
+    "Appointments upcoming"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_iteration3_apis.py",
+    "/app/test_reports/pytest/iteration3_results.xml"
+  ],
+  "action_items": [
+    "Minor: Consolidate duplicate admin/plans routes to use single db.plans collection"
+  ],
+  "critical_code_review_comments": [
+    "Duplicate route definitions for /api/admin/plans endpoints - lines 945-979 and 1671-1760 in server.py use different collections (plans_config vs plans)",
+    "MOCKED: All integrations are in SIMULATION MODE - Google Calendar OAuth, TheFork, OpenTable, Stripe, Twilio"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration3_apis.py"
+  ],
+  "success_rate": {
+    "backend": "100% (23/23 tests passed)",
+    "frontend": "100% (all pages and flows working)"
+  },
+  "test_credentials": {
+    "super_admin": "admin@noshow.com / admin123456",
+    "business_owner": "demo@bellanapoli.com / demo123456"
+  },
+  "seed_data_creation": "Google Calendar sync imports 2 simulated RDV (Client Google Cal 1, Client Google Cal 2). TEST_Premium Plus plan created for testing then cleaned up.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "mocked_integrations": {
+    "google_calendar_oauth": "Simulation mode - uses callback-simulate endpoint",
+    "thefork_webhook": "Simulation mode - accepts webhooks but no real API keys",
+    "opentable_webhook": "Simulation mode - accepts webhooks but no real API keys", 
+    "stripe_payments": "Simulation mode - subscription IDs are simulated",
+    "twilio_notifications": "Simulation mode - notifications logged but not sent"
+  },
+  "context_for_next_testing_agent": "All iteration 3 features working. ML Scoring analyzes client history with 6 weighted factors. Calendar integrations in simulation mode. Admin can CRUD plans. Minor issue: duplicate route definitions for admin/plans endpoints using different DB collections."
+}
