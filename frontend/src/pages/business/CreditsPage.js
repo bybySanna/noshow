@@ -547,6 +547,82 @@ export default function CreditsPage() {
 
           {activeTab === 'settings' && dashboard && (
             <div className="space-y-6">
+              {/* API Keys Info */}
+              <div className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-xl p-5 border border-blue-500/20">
+                <h3 className="font-heading font-700 mb-3 flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-blue-500" />
+                  {lang === 'fr' ? 'Configuration des Intégrations' : 'Integration Configuration'}
+                </h3>
+                <div className="space-y-4">
+                  <div className="p-4 bg-background/50 rounded-xl">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-purple-500" />
+                        <span className="font-heading font-600">Resend (Email)</span>
+                      </div>
+                      <span className="text-xs px-2 py-1 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400">
+                        {lang === 'fr' ? 'Simulation' : 'Simulation'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      {lang === 'fr' 
+                        ? 'Pour envoyer des emails réels, ajoutez votre clé API Resend dans le fichier .env du backend.'
+                        : 'To send real emails, add your Resend API key in the backend .env file.'}
+                    </p>
+                    <code className="text-xs bg-muted p-2 rounded block font-mono">
+                      RESEND_API_KEY=re_xxxxxxxx
+                    </code>
+                    <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer" 
+                       className="text-xs text-primary hover:underline mt-2 inline-block">
+                      → {lang === 'fr' ? 'Obtenir une clé Resend' : 'Get a Resend key'}
+                    </a>
+                  </div>
+                  
+                  <div className="p-4 bg-background/50 rounded-xl">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-blue-500" />
+                        <span className="font-heading font-600">Twilio (SMS/WhatsApp)</span>
+                      </div>
+                      <span className="text-xs px-2 py-1 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400">
+                        {lang === 'fr' ? 'Simulation' : 'Simulation'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      {lang === 'fr' 
+                        ? 'Pour envoyer des SMS/WhatsApp réels, ajoutez vos clés Twilio.'
+                        : 'To send real SMS/WhatsApp, add your Twilio keys.'}
+                    </p>
+                    <code className="text-xs bg-muted p-2 rounded block font-mono whitespace-pre-wrap">
+{`TWILIO_ACCOUNT_SID=ACxxxxxxxx
+TWILIO_AUTH_TOKEN=xxxxxxxx
+TWILIO_PHONE_NUMBER=+33xxxxxxxx`}
+                    </code>
+                    <a href="https://console.twilio.com/" target="_blank" rel="noopener noreferrer" 
+                       className="text-xs text-primary hover:underline mt-2 inline-block">
+                      → {lang === 'fr' ? 'Console Twilio' : 'Twilio Console'}
+                    </a>
+                  </div>
+
+                  <div className="p-4 bg-background/50 rounded-xl">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="w-4 h-4 text-green-500" />
+                        <span className="font-heading font-600">Stripe (Paiements)</span>
+                      </div>
+                      <span className="text-xs px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">
+                        {lang === 'fr' ? 'Actif (Test)' : 'Active (Test)'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {lang === 'fr' 
+                        ? 'Stripe est configuré en mode test. Les paiements sont simulés.'
+                        : 'Stripe is configured in test mode. Payments are simulated.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {/* Pay-as-you-go */}
               <div className="bg-card rounded-xl p-5 border border-border">
                 <div className="flex items-center justify-between mb-4">
