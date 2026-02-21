@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Calendar, LayoutDashboard, Users, Settings, BarChart2, Bell, LogOut, Sun, Moon, AlertTriangle, CalendarDays, UserCircle, Link2, Brain, FileText, Star, Heart, MessageSquare } from 'lucide-react';
+import { Calendar, LayoutDashboard, Users, Settings, BarChart2, Bell, LogOut, Sun, Moon, AlertTriangle, CalendarDays, UserCircle, Link2, Brain, FileText, Star, Heart, MessageSquare, Zap, Cog } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LangContext';
 import { useTheme } from '../context/ThemeContext';
@@ -14,6 +14,7 @@ const navItems = [
   { to: '/clients', icon: UserCircle, label_fr: 'Clients', label_en: 'Clients', key: 'clients' },
   { to: '/client-ratings', icon: Star, label_fr: 'Notations', label_en: 'Ratings', key: 'ratings' },
   { to: '/thankyou', icon: Heart, label_fr: 'Remerciements', label_en: 'Thank You', key: 'thankyou' },
+  { to: '/automation', icon: Zap, label_fr: 'Automatisation', label_en: 'Automation', key: 'automation' },
   { to: '/ml-scoring', icon: Brain, label_fr: 'Scoring ML', label_en: 'ML Scoring', key: 'mlscoring' },
   { to: '/clients-risk', icon: AlertTriangle, label_fr: 'Risques', label_en: 'Risks', key: 'risks' },
   { to: '/notifications', icon: Bell, key: 'notifications' },
@@ -21,6 +22,7 @@ const navItems = [
   { to: '/templates', icon: FileText, label_fr: 'Templates', label_en: 'Templates', key: 'templates' },
   { to: '/integrations', icon: Link2, label_fr: 'Intégrations', label_en: 'Integrations', key: 'integrations' },
   { to: '/staff', icon: Users, key: 'staff' },
+  { to: '/setup', icon: Cog, label_fr: 'Configuration', label_en: 'Setup', key: 'setup' },
   { to: '/settings', icon: Settings, key: 'settings' },
 ];
 
