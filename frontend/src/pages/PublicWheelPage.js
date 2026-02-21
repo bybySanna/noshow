@@ -5,7 +5,7 @@ import axios from 'axios';
 import { useParams } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 // Composant de roue visuelle avec animation
 const AnimatedWheel = ({ segments, spinning, onSpinEnd, result }) => {
