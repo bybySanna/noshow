@@ -23,6 +23,8 @@ import TemplatesPage from './pages/business/TemplatesPage';
 import ClientRatingsPage from './pages/business/ClientRatingsPage';
 import ThankYouPage from './pages/business/ThankYouPage';
 import BusinessMessagesPage from './pages/business/BusinessMessagesPage';
+import AutomationPage from './pages/business/AutomationPage';
+import BusinessOnboardingPage from './pages/business/OnboardingPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminBusinesses from './pages/admin/AdminBusinesses';
 import AdminPlans from './pages/admin/AdminPlans';
