@@ -98,6 +98,7 @@ function AppRoutes() {
       <Route path="/automation" element={<ProtectedRoute roles={['business_owner']}><AutomationPage /></ProtectedRoute>} />
       <Route path="/setup" element={<ProtectedRoute roles={['business_owner']}><BusinessOnboardingPage /></ProtectedRoute>} />
       <Route path="/credits" element={<ProtectedRoute roles={['business_owner']}><CreditsPage /></ProtectedRoute>} />
+      <Route path="/wheel" element={<ProtectedRoute roles={['business_owner']}><WheelOfFortunePage /></ProtectedRoute>} />
 
       {/* Super Admin */}
       <Route path="/admin" element={<ProtectedRoute roles={['super_admin']}><AdminDashboard /></ProtectedRoute>} />
