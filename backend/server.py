@@ -838,6 +838,92 @@ async def update_business_subscription(business_id: str, data: SubscriptionUpdat
     )
     return {"message": "Subscription updated"}
 
+@api_router.get("/admin/business/{business_id}/details")
+async def admin_business_details(business_id: str, user=Depends(require_super_admin)):
+    biz = await db.businesses.find_one({"id": business_id}, {"_id": 0})
+    if not biz:
+        raise HTTPException(status_code=404, detail="Business not found")
+    owner = await db.users.find_one({"id": biz.get("owner_id")}, {"_id": 0, "password_hash": 0})
+    staff = await db.users.find({"business_id": business_id, "role": "staff"}, {"_id": 0, "password_hash": 0}).to_list(50)
+    appts = await db.appointments.find({"business_id": business_id}, {"_id": 0}).sort("date", -1).limit(20).to_list(20)
+    total_appts = await db.appointments.count_documents({"business_id": business_id})
+    no_shows = await db.appointments.count_documents({"business_id": business_id, "status": "no_show"})
+    confirmed = await db.appointments.count_documents({"business_id": business_id, "status": "confirmed"})
+    notif_count = await db.notifications.count_documents({"business_id": business_id})
+    return {
+        "business": biz,
+        "owner": owner,
+        "staff": staff,
+        "recent_appointments": appts,
+        "stats": {
+            "total_appointments": total_appts,
+            "no_shows": no_shows,
+            "confirmed": confirmed,
+            "no_show_rate": round(no_shows / total_appts * 100 if total_appts > 0 else 0, 1),
+            "notifications_sent": notif_count
+        }
+    }
+
+@api_router.get("/admin/plans")
+async def get_admin_plans(user=Depends(require_super_admin)):
+    plans = await db.plans_config.find({}, {"_id": 0}).to_list(10)
+    if not plans:
+        # Return defaults
+        return [
+            {"id": "free_trial", "name": "Essai Gratuit", "price": 0, "appointments_per_month": 30, "staff_members": 1, "sms_notifications": 10, "features": ["Email reminders", "Basic dashboard"], "is_active": True, "trial_days": 14},
+            {"id": "solo", "name": "Solo", "price": 29, "appointments_per_month": 100, "staff_members": 1, "sms_notifications": 50, "features": ["All free features", "WhatsApp reminders", "Analytics"], "is_active": True, "trial_days": 0},
+            {"id": "pro", "name": "Pro", "price": 59, "appointments_per_month": 500, "staff_members": 5, "sms_notifications": 200, "features": ["All Solo features", "SMS", "Deposit collection", "Risk score"], "is_active": True, "trial_days": 0},
+            {"id": "business", "name": "Business", "price": 99, "appointments_per_month": -1, "staff_members": -1, "sms_notifications": -1, "features": ["Everything unlimited", "Priority support", "API access", "White label"], "is_active": True, "trial_days": 0},
+        ]
+    return plans
+
+@api_router.put("/admin/plans/{plan_id}")
+async def update_plan(plan_id: str, data: dict, user=Depends(require_super_admin)):
+    existing = await db.plans_config.find_one({"id": plan_id})
+    if existing:
+        await db.plans_config.update_one({"id": plan_id}, {"$set": data})
+    else:
+        data["id"] = plan_id
+        await db.plans_config.insert_one(data)
+    updated = await db.plans_config.find_one({"id": plan_id}, {"_id": 0})
+    return updated or data
+
+@api_router.post("/admin/plans")
+async def create_plan(data: dict, user=Depends(require_super_admin)):
+    data["id"] = str(uuid.uuid4())
+    data["created_at"] = datetime.now(timezone.utc).isoformat()
+    await db.plans_config.insert_one(data)
+    return {k: v for k, v in data.items() if k != "_id"}
+
+@api_router.delete("/admin/plans/{plan_id}")
+async def delete_plan(plan_id: str, user=Depends(require_super_admin)):
+    await db.plans_config.delete_one({"id": plan_id})
+    return {"message": "Plan deleted"}
+
+@api_router.post("/admin/businesses/{business_id}/message")
+async def send_message_to_business(business_id: str, data: dict, user=Depends(require_super_admin)):
+    # Mock send message / notification
+    notification = {
+        "id": str(uuid.uuid4()),
+        "type": "admin_message",
+        "from": "super_admin",
+        "to_business": business_id,
+        "message": data.get("message"),
+        "sent_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.admin_messages.insert_one(notification)
+    return {"message": "Message sent"}
+
+@api_router.get("/admin/activity")
+async def admin_activity(user=Depends(require_super_admin), limit: int = 50):
+    # Recent appointments across all businesses
+    recent_appts = await db.appointments.find({}, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
+    # Enrich with business name
+    for appt in recent_appts:
+        biz = await db.businesses.find_one({"id": appt["business_id"]}, {"_id": 0, "name": 1})
+        appt["business_name"] = biz["name"] if biz else "Unknown"
+    return recent_appts
+
 @api_router.get("/admin/stats")
 async def admin_stats(user=Depends(require_super_admin)):
     # Growth by month (last 6 months)
