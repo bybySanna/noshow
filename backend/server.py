@@ -3322,15 +3322,29 @@ async def update_wheel_config(data: dict, user=Depends(get_current_user)):
     if not business_id:
         raise HTTPException(status_code=400, detail="No business")
     
+    # Générer un code unique pour le lien si pas encore créé
+    existing = await db.wheel_configs.find_one({"business_id": business_id}, {"_id": 0})
+    unique_code = existing.get("unique_code") if existing else None
+    if not unique_code:
+        unique_code = str(uuid.uuid4())[:8].upper()
+    
     config = {
         "business_id": business_id,
+        "unique_code": unique_code,
         "enabled": data.get("enabled", False),
         "title": data.get("title", "Roue de la Fortune"),
         "subtitle": data.get("subtitle", "Tentez votre chance !"),
         "segments": data.get("segments", []),
-        "tasks_required": data.get("tasks_required", ["google_review"]),
+        "tasks_required": data.get("tasks_required", []),
         "expiry_days": data.get("expiry_days", 30),
         "max_spins_per_client": data.get("max_spins_per_client", 1),
+        # Nouvelles configurations
+        "social_links": data.get("social_links", {}),
+        "google_review_link": data.get("google_review_link", ""),
+        "cgv_text": data.get("cgv_text", ""),
+        "rules_text": data.get("rules_text", ""),
+        "require_gdpr": data.get("require_gdpr", True),
+        "actions": data.get("actions", []),
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
     
@@ -3341,12 +3355,10 @@ async def update_wheel_config(data: dict, user=Depends(get_current_user)):
     )
     
     # Mettre à jour le lien dans les settings post-RDV
-    biz = await db.businesses.find_one({"id": business_id}, {"_id": 0})
-    wheel_link = f"https://{os.environ.get('DOMAIN', 'noshowgone.com')}/wheel/{business_id}"
+    wheel_link = f"{os.environ.get('FRONTEND_URL', '')}/play/{unique_code}"
     await db.businesses.update_one(
         {"id": business_id},
         {"$set": {"post_rdv_settings.wheel_of_fortune_link": wheel_link}}
-    )
     
     return {"success": True}
 
