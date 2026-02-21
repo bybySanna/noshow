@@ -193,6 +193,8 @@ export default function AppointmentsPage() {
         <div className="space-y-2">
           {filtered.map(appt => {
             const statusConf = STATUS_CONFIG[appt.status] || STATUS_CONFIG.pending;
+            const sourceConf = SOURCE_CONFIG[appt.source || 'manual'] || SOURCE_CONFIG.manual;
+            const SourceIcon = sourceConf.icon;
             return (
               <div
                 key={appt.id}
@@ -213,6 +215,12 @@ export default function AppointmentsPage() {
                       {appt.service && <span className="text-primary">• {appt.service}</span>}
                     </div>
                   </div>
+                  {/* Source badge */}
+                  {appt.source && appt.source !== 'manual' && (
+                    <div className={cn("flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-muted/50", sourceConf.color)} title={lang === 'fr' ? sourceConf.label_fr : sourceConf.label_en}>
+                      <SourceIcon className="w-3 h-3" />
+                    </div>
+                  )}
                   <span className={cn("text-[11px] font-heading font-700 px-2 py-0.5 rounded-full", statusConf.className)}>
                     {lang === 'fr' ? statusConf.label_fr : statusConf.label_en}
                   </span>
