@@ -48,65 +48,59 @@ const AnimatedWheel = ({ segments = [], spinning, onSpinEnd, result }) => {
         <div className="w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-t-[20px] border-t-white drop-shadow-lg" />
       </div>
       
-      {/* Roue */}
-      <svg 
-        viewBox="0 0 100 100" 
-        className="w-full h-full"
+      {/* Fond de roue */}
+      <div 
+        className="absolute inset-0 rounded-full"
         style={{
+          background: 'conic-gradient(' + segments.map((s, i) => 
+            `${s.color || defaultColors[i % defaultColors.length]} ${i * (360/segments.length)}deg ${(i+1) * (360/segments.length)}deg`
+          ).join(', ') + ')',
           transform: `rotate(${rotation}deg)`,
           transition: spinning ? 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none',
-          filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))'
+          boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+        }}
+      />
+      
+      {/* Labels */}
+      <svg 
+        viewBox="0 0 100 100" 
+        className="absolute inset-0 w-full h-full"
+        style={{
+          transform: `rotate(${rotation}deg)`,
+          transition: spinning ? 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none'
         }}
       >
         {segments.map((segment, i) => {
-          const startAngle = i * segmentAngle - 90;
-          const endAngle = startAngle + segmentAngle;
-          
-          const startRad = startAngle * Math.PI / 180;
-          const endRad = endAngle * Math.PI / 180;
-          
-          const x1 = 50 + 45 * Math.cos(startRad);
-          const y1 = 50 + 45 * Math.sin(startRad);
-          const x2 = 50 + 45 * Math.cos(endRad);
-          const y2 = 50 + 45 * Math.sin(endRad);
-          
-          const largeArc = segmentAngle > 180 ? 1 : 0;
-          const color = segment.color || defaultColors[i % defaultColors.length];
-          
-          // Position du texte
-          const midAngle = (startAngle + segmentAngle / 2) * Math.PI / 180;
-          const textX = 50 + 28 * Math.cos(midAngle);
-          const textY = 50 + 28 * Math.sin(midAngle);
-          const textRotation = startAngle + segmentAngle / 2 + 90;
+          const midAngle = (i * segmentAngle + segmentAngle / 2 - 90) * Math.PI / 180;
+          const textX = 50 + 30 * Math.cos(midAngle);
+          const textY = 50 + 30 * Math.sin(midAngle);
+          const textRotation = i * segmentAngle + segmentAngle / 2;
           
           return (
-            <g key={i}>
-              <path
-                d={`M 50 50 L ${x1} ${y1} A 45 45 0 ${largeArc} 1 ${x2} ${y2} Z`}
-                fill={color}
-                stroke="white"
-                strokeWidth="1"
-              />
-              <text
-                x={textX}
-                y={textY}
-                fill="white"
-                fontSize="5"
-                fontWeight="bold"
-                textAnchor="middle"
-                dominantBaseline="middle"
-                transform={`rotate(${textRotation}, ${textX}, ${textY})`}
-              >
-                {(segment.label || '').substring(0, 6)}
-              </text>
-            </g>
+            <text
+              key={i}
+              x={textX}
+              y={textY}
+              fill="white"
+              fontSize="5"
+              fontWeight="bold"
+              textAnchor="middle"
+              dominantBaseline="middle"
+              transform={`rotate(${textRotation}, ${textX}, ${textY})`}
+              style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}
+            >
+              {(segment.label || '').substring(0, 7)}
+            </text>
           );
         })}
-        {/* Centre */}
-        <circle cx="50" cy="50" r="10" fill="white" />
-        <circle cx="50" cy="50" r="7" fill="#f9fafb" />
-        <circle cx="50" cy="50" r="3" fill="#e5e7eb" />
       </svg>
+      
+      {/* Centre */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-white shadow-lg flex items-center justify-center">
+        <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
+          <Gift className="w-6 h-6 text-primary" />
+        </div>
+      </div>
     </div>
   );
 };
