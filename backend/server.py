@@ -2996,6 +2996,230 @@ async def get_timezones():
     ]
     return timezones
 
+# ============= CRÉDITS ET FACTURATION =============
+from services.credits_service import CreditsService, EmailService, CreditType
+
+@api_router.get("/credits/dashboard")
+async def get_credits_dashboard(user=Depends(get_current_user)):
+    """Dashboard crédits pour l'entreprise"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    service = CreditsService(db)
+    return await service.get_credits_dashboard(business_id)
+
+@api_router.get("/credits/check/{credit_type}")
+async def check_credits(credit_type: str, user=Depends(get_current_user)):
+    """Vérifie les crédits disponibles"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    try:
+        ct = CreditType(credit_type)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid credit type: {credit_type}")
+    
+    service = CreditsService(db)
+    return await service.check_credits(business_id, ct)
+
+@api_router.get("/credits/packs")
+async def get_credit_packs():
+    """Liste des packs de crédits disponibles à l'achat"""
+    service = CreditsService(db)
+    return await service.get_credit_packs()
+
+@api_router.post("/credits/purchase")
+async def purchase_credits(data: dict, user=Depends(get_current_user)):
+    """Achat de crédits prépayés"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    credit_type = data.get("credit_type")
+    pack_key = data.get("pack_key")
+    
+    if not credit_type or not pack_key:
+        raise HTTPException(status_code=400, detail="credit_type and pack_key required")
+    
+    service = CreditsService(db)
+    result = await service.purchase_credits_prepaid(business_id, credit_type, pack_key)
+    
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    
+    return result
+
+@api_router.put("/credits/pay-as-you-go")
+async def configure_pay_as_you_go(data: dict, user=Depends(get_current_user)):
+    """Configure le pay-as-you-go"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    service = CreditsService(db)
+    return await service.enable_pay_as_you_go(
+        business_id,
+        data.get("credit_types", ["sms", "email", "whatsapp"]),
+        data.get("auto_reload_threshold", 10)
+    )
+
+@api_router.get("/credits/history")
+async def get_credits_history(user=Depends(get_current_user), limit: int = 50):
+    """Historique d'utilisation des crédits"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    logs = await db.credit_usage_logs.find(
+        {"business_id": business_id},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    purchases = await db.credit_purchases.find(
+        {"business_id": business_id},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(20).to_list(20)
+    
+    return {"usage_logs": logs, "purchases": purchases}
+
+# ============= EMAIL SERVICE =============
+@api_router.post("/email/send")
+async def send_email(data: dict, user=Depends(get_current_user)):
+    """Envoie un email"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    to_email = data.get("to_email")
+    subject = data.get("subject")
+    html_content = data.get("html_content")
+    
+    if not all([to_email, subject, html_content]):
+        raise HTTPException(status_code=400, detail="to_email, subject, and html_content required")
+    
+    service = EmailService(db)
+    result = await service.send_email(
+        business_id=business_id,
+        to_email=to_email,
+        subject=subject,
+        html_content=html_content,
+        from_name=data.get("from_name"),
+        reply_to=data.get("reply_to")
+    )
+    
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("message", "Failed to send email"))
+    
+    return result
+
+@api_router.post("/email/send-template")
+async def send_template_email(data: dict, user=Depends(get_current_user)):
+    """Envoie un email avec template"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    service = EmailService(db)
+    return await service.send_post_rdv_email(
+        business_id=business_id,
+        to_email=data.get("to_email"),
+        client_name=data.get("client_name"),
+        template_key=data.get("template_key"),
+        variables=data.get("variables", {})
+    )
+
+@api_router.post("/email/domain/verify")
+async def initiate_domain_verification(data: dict, user=Depends(get_current_user)):
+    """Initie la vérification d'un domaine personnalisé"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    domain = data.get("domain")
+    if not domain:
+        raise HTTPException(status_code=400, detail="domain required")
+    
+    service = EmailService(db)
+    return await service.initiate_domain_verification(business_id, domain)
+
+@api_router.get("/email/domain/status")
+async def get_domain_status(user=Depends(get_current_user)):
+    """Vérifie le statut de vérification du domaine"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    service = EmailService(db)
+    return await service.check_domain_verification(business_id)
+
+@api_router.get("/email/logs")
+async def get_email_logs(user=Depends(get_current_user), limit: int = 50):
+    """Historique des emails envoyés"""
+    business_id = user.get("business_id")
+    if not business_id:
+        raise HTTPException(status_code=400, detail="No business")
+    
+    logs = await db.email_logs.find(
+        {"business_id": business_id},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    return logs
+
+# ============= ADMIN CRÉDITS =============
+@api_router.get("/admin/credits/stats")
+async def get_admin_credits_stats(user=Depends(require_super_admin)):
+    """Statistiques globales des crédits"""
+    service = CreditsService(db)
+    return await service.get_global_usage_stats()
+
+@api_router.post("/admin/credits/add-bonus")
+async def add_bonus_credits(data: dict, user=Depends(require_super_admin)):
+    """Ajoute des crédits bonus à une entreprise"""
+    business_id = data.get("business_id")
+    credit_type = data.get("credit_type")
+    quantity = data.get("quantity", 0)
+    reason = data.get("reason", "")
+    
+    if not all([business_id, credit_type, quantity]):
+        raise HTTPException(status_code=400, detail="business_id, credit_type, and quantity required")
+    
+    service = CreditsService(db)
+    return await service.add_bonus_credits_admin(business_id, credit_type, quantity, reason)
+
+@api_router.put("/admin/plans/{plan_id}/limits")
+async def update_plan_limits(plan_id: str, data: dict, user=Depends(require_super_admin)):
+    """Met à jour les limites d'un plan"""
+    service = CreditsService(db)
+    return await service.update_plan_limits(plan_id, data)
+
+@api_router.get("/admin/credits/businesses")
+async def get_businesses_credits_overview(user=Depends(require_super_admin)):
+    """Vue d'ensemble des crédits par entreprise"""
+    now = datetime.now(timezone.utc)
+    month_key = now.strftime("%Y-%m")
+    
+    businesses = await db.businesses.find(
+        {},
+        {"_id": 0, "id": 1, "name": 1, "usage": 1, "bonus_credits": 1, "subscription": 1, "pay_as_you_go": 1}
+    ).to_list(100)
+    
+    result = []
+    for biz in businesses:
+        usage = biz.get("usage", {}).get(month_key, {})
+        result.append({
+            "business_id": biz["id"],
+            "business_name": biz.get("name"),
+            "plan_id": biz.get("subscription", {}).get("plan_id"),
+            "usage_this_month": usage,
+            "bonus_credits": biz.get("bonus_credits", {}),
+            "pay_as_you_go": biz.get("pay_as_you_go", {}).get("enabled", False)
+        })
+    
+    return result
+
 app.include_router(api_router)
 
 app.add_middleware(
